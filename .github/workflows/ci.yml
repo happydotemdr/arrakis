@@ -1,41 +1,89 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop, 'feature/**']
+    branches: [master, develop, 'feature/**', 'hotfix/**']
   pull_request:
-    branches: [main, develop]
+    branches: [master, develop]
+
+env:
+  NODE_VERSION: '20'
 
 jobs:
-  test:
-    name: Test & Build
+  quality-checks:
+    name: Quality Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci
 
-      - name: Run type check
-        run: bun run type-check
+      - name: Check code quality
+        run: npm run check
 
-      - name: Run linting
-        run: bun run lint
+      - name: Run type checking
+        run: npm run typecheck
 
-      - name: Build application
-        run: bun run build
+      - name: Check for build errors
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: build-output
+          path: .next/
+          retention-days: 1
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test --if-present
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: coverage/
+          retention-days: 7
 
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'push'
+
+    permissions:
+      security-events: write
+      contents: read
 
     steps:
       - name: Checkout code
@@ -49,8 +97,87 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
 
-      - name: Upload Trivy scan results to GitHub Security tab
+      - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Check for security vulnerabilities
+        run: npm audit --audit-level=high
+
+      - name: Check for outdated dependencies
+        run: npm outdated || true
+
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    needs: [quality-checks]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for production
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Comment PR with preview info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Preview build completed successfully! Build artifacts are available for 1 day.'
+            });
+
+  notify-status:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [quality-checks, test, security, dependency-check]
+
+    steps:
+      - name: Check job status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const jobs = ${{ toJSON(needs) }};
+            const failed = Object.values(jobs).some(job => job.result === 'failure');
+            const cancelled = Object.values(jobs).some(job => job.result === 'cancelled');
+
+            if (failed) {
+              core.setFailed('One or more CI jobs failed');
+            } else if (cancelled) {
+              core.warning('One or more CI jobs were cancelled');
+            } else {
+              core.info('All CI jobs completed successfully');
+            }
