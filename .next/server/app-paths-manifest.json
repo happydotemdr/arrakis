@@ -1,6 +1,0 @@
-{
-  "/api/trpc/[trpc]/route": "app/api/trpc/[trpc]/route.js",
-  "/page": "app/page.js",
-  "/(dashboard)/sessions/page": "app/(dashboard)/sessions/page.js",
-  "/(dashboard)/conversations/page": "app/(dashboard)/conversations/page.js"
-}
