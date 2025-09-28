@@ -39,6 +39,8 @@ export const sessions = pgTable('sessions', {
     .defaultNow()
     .notNull(),
   status: varchar('status', { length: 20 }).default('active').notNull(),
+  messageCount: integer('message_count').default(0),
+  embeddingStatus: varchar('embedding_status', { length: 20 }).default('pending'),
   metadata: jsonb('metadata').default('{}'),
 })
 
@@ -55,6 +57,7 @@ export const messages = pgTable('messages', {
     .notNull(),
   tokens: integer('tokens'),
   costUsd: decimal('cost_usd', { precision: 8, scale: 6 }),
+  embeddingStatus: varchar('embedding_status', { length: 20 }).default('pending'),
   metadata: jsonb('metadata').default('{}'),
 })
 

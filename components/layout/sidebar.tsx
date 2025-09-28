@@ -16,6 +16,7 @@ import {
   Activity,
   Database,
   BookOpen,
+  Brain,
 } from 'lucide-react'
 
 const navigation = [
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Sessions', href: '/sessions', icon: MessageSquare },
   { name: 'Conversations', href: '/conversations', icon: BookOpen },
   { name: 'Search', href: '/search', icon: Search },
+  { name: 'Claude Code', href: '/claude-code', icon: Brain },
   { name: 'Capture', href: '/capture', icon: Activity },
 ]
 

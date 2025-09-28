@@ -6,7 +6,7 @@
 import { searchConversations, findSimilarConversations } from '@/lib/search/semantic-search'
 import { db } from '@/lib/db'
 import { messages, sessions } from '@/lib/db/schema'
-import { eq, desc, and } from 'drizzle-orm'
+import { eq, desc, and, sql } from 'drizzle-orm'
 
 export interface ContextItem {
   type: 'conversation' | 'message' | 'session_summary'
@@ -164,11 +164,11 @@ async function getCurrentSessionContext(
         id: messages.id,
         content: messages.content,
         role: messages.role,
-        timestamp: messages.timestamp,
+        timestamp: messages.createdAt,
       })
       .from(messages)
       .where(eq(messages.sessionId, sessionId))
-      .orderBy(desc(messages.timestamp))
+      .orderBy(desc(messages.createdAt))
       .limit(contextWindow)
 
     const contextItems: ContextItem[] = []
@@ -212,12 +212,12 @@ async function getRecentSessionsContext(
       .select({
         id: sessions.id,
         title: sessions.title,
-        startTime: sessions.startTime,
+        startTime: sessions.createdAt,
         messageCount: sessions.messageCount,
       })
       .from(sessions)
       .where(excludeSessionId ? sql`${sessions.id} != ${excludeSessionId}` : undefined)
-      .orderBy(desc(sessions.startTime))
+      .orderBy(desc(sessions.createdAt))
       .limit(20)
 
     const contextItems: ContextItem[] = []

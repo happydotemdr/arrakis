@@ -155,7 +155,7 @@ async function performSemanticSearch(options: SearchOptions): Promise<SearchResu
             metadata: {
               messageId: message.id,
               sessionId: message.sessionId,
-              timestamp: message.timestamp.toISOString(),
+              timestamp: message.createdAt.toISOString(),
               role: message.role,
             },
           })
@@ -201,7 +201,7 @@ async function performSemanticSearch(options: SearchOptions): Promise<SearchResu
             metadata: {
               sessionId: session.id,
               title: session.title || 'Untitled Session',
-              timestamp: session.startTime?.toISOString(),
+              timestamp: session.createdAt?.toISOString(),
               messageCount: session.messageCount || 0,
             },
           })
@@ -224,25 +224,22 @@ async function performKeywordSearch(options: SearchOptions): Promise<SearchResul
   const searchPattern = `%${query}%`
   const results: SearchResult[] = []
 
-  // Build where conditions
-  let whereConditions: any[] = [
-    or(
-      like(messages.content, searchPattern),
-      like(sessions.title, searchPattern)
-    )
+  // Build message search conditions
+  let messageWhereConditions: any[] = [
+    like(messages.content, searchPattern)
   ]
 
   if (filters?.dateRange) {
-    whereConditions.push(
+    messageWhereConditions.push(
       and(
-        sql`${messages.timestamp} >= ${filters.dateRange.from}`,
-        sql`${messages.timestamp} <= ${filters.dateRange.to}`
+        sql`${messages.createdAt} >= ${filters.dateRange.from}`,
+        sql`${messages.createdAt} <= ${filters.dateRange.to}`
       )
     )
   }
 
   if (filters?.messageTypes?.length) {
-    whereConditions.push(sql`${messages.role} IN (${filters.messageTypes.join(',')})`)
+    messageWhereConditions.push(sql`${messages.role} IN (${filters.messageTypes.join(',')})`)
   }
 
   // Search messages
@@ -252,11 +249,11 @@ async function performKeywordSearch(options: SearchOptions): Promise<SearchResul
       content: messages.content,
       role: messages.role,
       sessionId: messages.sessionId,
-      timestamp: messages.timestamp,
+      timestamp: messages.createdAt,
     })
     .from(messages)
-    .where(and(...whereConditions))
-    .orderBy(desc(messages.timestamp))
+    .where(and(...messageWhereConditions))
+    .orderBy(desc(messages.createdAt))
     .limit(500)
 
   for (const message of messageResults) {
@@ -278,12 +275,12 @@ async function performKeywordSearch(options: SearchOptions): Promise<SearchResul
     .select({
       id: sessions.id,
       title: sessions.title,
-      startTime: sessions.startTime,
+      startTime: sessions.createdAt,
       messageCount: sessions.messageCount,
     })
     .from(sessions)
     .where(like(sessions.title, searchPattern))
-    .orderBy(desc(sessions.startTime))
+    .orderBy(desc(sessions.createdAt))
     .limit(100)
 
   for (const session of sessionResults) {
@@ -383,11 +380,11 @@ async function addContextToResults(results: SearchResult[]): Promise<SearchResul
           id: messages.id,
           role: messages.role,
           content: messages.content,
-          timestamp: messages.timestamp,
+          timestamp: messages.createdAt,
         })
         .from(messages)
         .where(eq(messages.sessionId, result.metadata.sessionId))
-        .orderBy(messages.timestamp)
+        .orderBy(messages.createdAt)
 
       const currentIndex = contextMessages.findIndex(
         m => m.id === result.metadata.messageId
@@ -434,7 +431,7 @@ export async function getSearchSuggestions(partial: string): Promise<string[]> {
       .select({ title: sessions.title })
       .from(sessions)
       .where(like(sessions.title, `%${partial}%`))
-      .orderBy(desc(sessions.startTime))
+      .orderBy(desc(sessions.createdAt))
       .limit(5)
 
     for (const session of recentSessions) {
@@ -507,7 +504,7 @@ export async function findSimilarConversations(
             metadata: {
               sessionId: row.sessions.id,
               title: row.sessions.title || 'Untitled Session',
-              timestamp: row.sessions.startTime?.toISOString(),
+              timestamp: row.sessions.createdAt?.toISOString(),
               messageCount: row.sessions.messageCount || 0,
             },
           })

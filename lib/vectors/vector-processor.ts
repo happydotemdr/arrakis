@@ -245,7 +245,7 @@ export async function processSessionEmbedding(sessionId: string) {
     .select()
     .from(messages)
     .where(eq(messages.sessionId, sessionId))
-    .orderBy(messages.timestamp)
+    .orderBy(messages.createdAt)
 
   // Create summary text for embedding
   const summaryText = createSessionSummary(session, sessionMessages)

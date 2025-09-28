@@ -8,6 +8,7 @@ import { sessionsRouter } from './routers/sessions'
 import { searchRouter } from './routers/search'
 import { captureRouter } from './routers/capture'
 import { claudeRouter } from './routers/claude'
+import { claudeCodeRouter } from './routers/claude-code'
 import { templatesRouter } from './routers/templates'
 
 /**
@@ -20,6 +21,7 @@ export const appRouter = router({
   search: searchRouter,
   capture: captureRouter,
   claude: claudeRouter,
+  claudeCode: claudeCodeRouter,
   templates: templatesRouter,
 })
 
