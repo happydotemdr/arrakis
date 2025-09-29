@@ -54,7 +54,7 @@ envVarGroups:
       - key: NODE_OPTIONS
         value: "--max-old-space-size=4096"
 
-   Development secrets (Note: These groups will be created manually in Render Dashboard)
+   # Development secrets (Note: These groups will be created manually in Render Dashboard)
    - name: arrakis-secrets-dev
      envVars:
        - key: ANTHROPIC_API_KEY
