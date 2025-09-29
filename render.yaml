@@ -62,7 +62,7 @@ envVarGroups:
        - key: OPENAI_API_KEY
          value: # Set in Render Dashboard
 
-   Production secrets (shared with staging)
+   # Production secrets (shared with staging)
    - name: arrakis-secrets-prod
      envVars:
        - key: ANTHROPIC_API_KEY
@@ -71,8 +71,8 @@ envVarGroups:
          value: # Set in Render Dashboard
 
 # Database Definitions
+# Development Database - Free tier with pgvector
 databases:
-  # Development Database - Free tier with pgvector
   - name: arrakis-dev-db
     plan: free
     postgresMajorVersion: "16"
