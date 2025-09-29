@@ -40,34 +40,40 @@ databases:
       - source: 0.0.0.0/0
         description: "Production access (configure specific IPs in production)"
 
-# Redis Key-Value Stores
+
+# Service Definitions
+services:
+  # ===================
+  # REDIS KEY-VALUE STORES
+  # ===================
+
   # Development Redis
-  - name: arrakis-dev-redis
-    type: redis
+  - type: keyvalue
+    name: arrakis-dev-redis
     plan: free
+    region: oregon
     ipAllowList:
       - source: 0.0.0.0/0
         description: "Development access"
 
   # Staging Redis
-  - name: arrakis-staging-redis
-    type: redis
+  - type: keyvalue
+    name: arrakis-staging-redis
     plan: starter
+    region: oregon
     ipAllowList:
       - source: 0.0.0.0/0
         description: "Staging access"
 
-  # Production Redis with persistence
-  - name: arrakis-prod-redis
-    type: redis
+  # Production Redis with optimized settings
+  - type: keyvalue
+    name: arrakis-prod-redis
     plan: standard
+    region: oregon
     maxmemoryPolicy: allkeys-lru
     ipAllowList:
       - source: 0.0.0.0/0
         description: "Production access (configure specific IPs in production)"
-
-# Service Definitions
-services:
   # ===================
   # DEVELOPMENT ENVIRONMENT
   # ===================
@@ -93,15 +99,17 @@ services:
     # Preview environments
     previews:
       generation: automatic
-      buildFilter:
-        paths:
-          - "app/**/*"
-          - "components/**/*"
-          - "lib/**/*"
-          - "package.json"
-        ignoredPaths:
-          - "docs/**/*"
-          - "*.md"
+
+    # Build filtering
+    buildFilter:
+      paths:
+        - "app/**/*"
+        - "components/**/*"
+        - "lib/**/*"
+        - "package.json"
+      ignoredPaths:
+        - "docs/**/*"
+        - "*.md"
 
     envVars:
       # Database and Redis connections
@@ -110,8 +118,9 @@ services:
           name: arrakis-dev-db
           property: connectionString
       - key: REDIS_URL
-        fromDatabase:
+        fromService:
           name: arrakis-dev-redis
+          type: keyvalue
           property: connectionString
 
       # Environment-specific URLs
@@ -120,9 +129,9 @@ services:
 
     # Reference existing environment groups
     envVarGroups:
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-dev
-      - fromGroup: arrakis-secrets-dev
+      - arrakis-shared
+      - arrakis-dev
+      - arrakis-secrets-dev
 
   # ===================
   # STAGING ENVIRONMENT
@@ -154,8 +163,9 @@ services:
           name: arrakis-staging-db
           property: connectionString
       - key: REDIS_URL
-        fromDatabase:
+        fromService:
           name: arrakis-staging-redis
+          type: keyvalue
           property: connectionString
 
       # Environment-specific URLs
@@ -164,9 +174,9 @@ services:
 
     # Reference existing environment groups
     envVarGroups:
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-staging
-      - fromGroup: arrakis-secrets-prod  # Use prod secrets for staging
+      - arrakis-shared
+      - arrakis-staging
+      - arrakis-secrets-prod  # Use prod secrets for staging
 
   # ===================
   # PRODUCTION ENVIRONMENT
@@ -202,8 +212,9 @@ services:
           name: arrakis-prod-db
           property: connectionString
       - key: REDIS_URL
-        fromDatabase:
+        fromService:
           name: arrakis-prod-redis
+          type: keyvalue
           property: connectionString
 
       # Environment-specific URLs
@@ -212,9 +223,9 @@ services:
 
     # Reference existing environment groups
     envVarGroups:
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-prod
-      - fromGroup: arrakis-secrets-prod
+      - arrakis-shared
+      - arrakis-prod
+      - arrakis-secrets-prod
 
   # ===================
   # BACKGROUND WORKERS
@@ -239,15 +250,16 @@ services:
           name: arrakis-dev-db
           property: connectionString
       - key: REDIS_URL
-        fromDatabase:
+        fromService:
           name: arrakis-dev-redis
+          type: keyvalue
           property: connectionString
 
     # Reference existing environment groups
     envVarGroups:
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-dev
-      - fromGroup: arrakis-secrets-dev
+      - arrakis-shared
+      - arrakis-dev
+      - arrakis-secrets-dev
 
   # Staging Worker
   - type: pserv
@@ -268,15 +280,16 @@ services:
           name: arrakis-staging-db
           property: connectionString
       - key: REDIS_URL
-        fromDatabase:
+        fromService:
           name: arrakis-staging-redis
+          type: keyvalue
           property: connectionString
 
     # Reference existing environment groups
     envVarGroups:
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-staging
-      - fromGroup: arrakis-secrets-prod
+      - arrakis-shared
+      - arrakis-staging
+      - arrakis-secrets-prod
 
   # Production Worker with persistent disk
   - type: pserv
@@ -303,12 +316,13 @@ services:
           name: arrakis-prod-db
           property: connectionString
       - key: REDIS_URL
-        fromDatabase:
+        fromService:
           name: arrakis-prod-redis
+          type: keyvalue
           property: connectionString
 
     # Reference existing environment groups
     envVarGroups:
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-prod
-      - fromGroup: arrakis-secrets-prod
+      - arrakis-shared
+      - arrakis-prod
+      - arrakis-secrets-prod
