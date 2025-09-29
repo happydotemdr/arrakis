@@ -127,11 +127,10 @@ services:
       - key: NEXT_PUBLIC_APP_URL
         value: https://arrakis-dev.onrender.com
 
-    # Reference existing environment groups
-    envVarGroups:
-      - arrakis-shared
-      - arrakis-dev
-      - arrakis-secrets-dev
+      # Reference existing environment groups
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-dev
+      - fromGroup: arrakis-secrets-dev
 
   # ===================
   # STAGING ENVIRONMENT
@@ -172,11 +171,10 @@ services:
       - key: NEXT_PUBLIC_APP_URL
         value: https://arrakis-staging.onrender.com
 
-    # Reference existing environment groups
-    envVarGroups:
-      - arrakis-shared
-      - arrakis-staging
-      - arrakis-secrets-prod  # Use prod secrets for staging
+      # Reference existing environment groups
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-staging
+      - fromGroup: arrakis-secrets-prod  # Use prod secrets for staging
 
   # ===================
   # PRODUCTION ENVIRONMENT
@@ -221,11 +219,10 @@ services:
       - key: NEXT_PUBLIC_APP_URL
         value: https://arrakis.onrender.com
 
-    # Reference existing environment groups
-    envVarGroups:
-      - arrakis-shared
-      - arrakis-prod
-      - arrakis-secrets-prod
+      # Reference existing environment groups
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-prod
+      - fromGroup: arrakis-secrets-prod
 
   # ===================
   # BACKGROUND WORKERS
@@ -255,11 +252,10 @@ services:
           type: keyvalue
           property: connectionString
 
-    # Reference existing environment groups
-    envVarGroups:
-      - arrakis-shared
-      - arrakis-dev
-      - arrakis-secrets-dev
+      # Reference existing environment groups
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-dev
+      - fromGroup: arrakis-secrets-dev
 
   # Staging Worker
   - type: pserv
@@ -285,11 +281,10 @@ services:
           type: keyvalue
           property: connectionString
 
-    # Reference existing environment groups
-    envVarGroups:
-      - arrakis-shared
-      - arrakis-staging
-      - arrakis-secrets-prod
+      # Reference existing environment groups
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-staging
+      - fromGroup: arrakis-secrets-prod
 
   # Production Worker with persistent disk
   - type: pserv
@@ -321,8 +316,7 @@ services:
           type: keyvalue
           property: connectionString
 
-    # Reference existing environment groups
-    envVarGroups:
-      - arrakis-shared
-      - arrakis-prod
-      - arrakis-secrets-prod
+      # Reference existing environment groups
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-prod
+      - fromGroup: arrakis-secrets-prod
