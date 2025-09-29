@@ -2,8 +2,9 @@
 # Complete dev/staging/prod environment setup with proper separation
 
 # Environment Groups - Shared configurations across environments
+# Shared configurations for all environments
+
 envVarGroups:
-  # Shared configurations for all environments
   - name: arrakis-shared
     envVars:
       - key: NODE_ENV
