@@ -12,7 +12,7 @@ Features:
 - Detailed logging and feedback
 - Follows Claude Code security best practices
 
-Author: Generated for C:\projects workspace
+Author: Generated for C:\\projects workspace
 """
 
 import json
@@ -24,6 +24,12 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 import logging
+
+# Set UTF-8 encoding for Windows compatibility
+if sys.platform.startswith('win'):
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
 
 # Configure logging
 logging.basicConfig(
@@ -138,17 +144,17 @@ def run_formatter(file_path: str, tool_name: str) -> Tuple[bool, str]:
         )
         
         if result.returncode == 0:
-            return True, f"✓ {config['name']} formatted {Path(file_path).name}"
+            return True, f"[OK] {config['name']} formatted {Path(file_path).name}"
         else:
             # Log stderr but don't fail completely
             if result.stderr:
                 logger.warning(f"{tool_name} warning: {result.stderr[:200]}")
-            return False, f"⚠ {config['name']} had issues with {Path(file_path).name}"
+            return False, f"[WARN] {config['name']} had issues with {Path(file_path).name}"
             
     except subprocess.TimeoutExpired:
-        return False, f"⏱ {config['name']} timed out on {Path(file_path).name}"
+        return False, f"[TIMEOUT] {config['name']} timed out on {Path(file_path).name}"
     except subprocess.SubprocessError as e:
-        return False, f"❌ {config['name']} error: {str(e)[:100]}"
+        return False, f"[ERROR] {config['name']} error: {str(e)[:100]}"
 
 def get_tools_for_file(file_path: str) -> List[str]:
     """Get list of tools that should process this file."""
@@ -208,7 +214,7 @@ def format_file(file_path: str) -> Dict[str, Union[str, bool, List[str]]]:
         successful_tools = 0
         for tool_name in tools:
             if not check_tool_availability(tool_name):
-                results['messages'].append(f"⚠ {TOOL_CONFIG[tool_name]['name']} not available")
+                results['messages'].append(f"[SKIP] {TOOL_CONFIG[tool_name]['name']} not available")
                 continue
                 
             success, message = run_formatter(file_path, tool_name)
@@ -270,7 +276,7 @@ def main():
             
             # Summary for complex operations
             if len(results['tools_used']) > 1:
-                print(f"📋 Formatted {Path(file_path).name} with {len(results['tools_used'])} tools")
+                print(f"[SUMMARY] Formatted {Path(file_path).name} with {len(results['tools_used'])} tools")
         else:
             # Print errors to stderr so they don't appear in transcript
             for error in results['errors']:
