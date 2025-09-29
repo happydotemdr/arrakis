@@ -1,16 +1,17 @@
 # Render.com Deployment Guide
 
-Complete guide for deploying Arrakis to Render.com with proper dev/staging/prod environment separation following 2025 best practices.
+Complete guide for deploying Arrakis to Render.com with proper dev/prod environment separation following 2025 best practices and cost optimization.
 
 ## Overview
 
 This guide transforms Arrakis from a mixed GitHub + Neon + local setup to a clean, professional Render.com infrastructure with:
 
-- ✅ **Environment Separation**: Development, Staging, Production
+- ✅ **Environment Separation**: Development and Production (cost-optimized 2-environment setup)
 - ✅ **Infrastructure as Code**: YAML blueprints
 - ✅ **Automated CI/CD**: GitHub Actions integration
 - ✅ **Database Migration**: From Neon to Render PostgreSQL
 - ✅ **Security**: Proper secret management and environment isolation
+- ✅ **Cost Optimization**: ~$22/month total with free development tier
 
 ## Prerequisites
 
@@ -127,16 +128,12 @@ After deployment completes:
 
 1. **Get Connection Strings**: From Render Dashboard
    - Development DB: `arrakis-dev-db`
-   - Staging DB: `arrakis-staging-db`
    - Production DB: `arrakis-prod-db`
 
 2. **Import Data**:
 ```bash
 # Import to production first
 psql $RENDER_PROD_DATABASE_URL < arrakis_backup.sql
-
-# Copy to staging
-pg_dump $RENDER_PROD_DATABASE_URL | psql $RENDER_STAGING_DATABASE_URL
 
 # Copy to development (optional - you might want fresh data)
 pg_dump $RENDER_PROD_DATABASE_URL | psql $RENDER_DEV_DATABASE_URL
@@ -146,15 +143,12 @@ pg_dump $RENDER_PROD_DATABASE_URL | psql $RENDER_DEV_DATABASE_URL
 
 ### 4.1 Branch Strategy
 
-Create these branches in your repository:
+Create the development branch in your repository:
 
 ```bash
-# Create and push environment branches
+# Create and push development branch
 git checkout -b develop
 git push origin develop
-
-git checkout -b staging
-git push origin staging
 
 # master branch already exists for production
 ```
@@ -164,7 +158,6 @@ git push origin staging
 After deployment, your environments will be available at:
 
 - **Development**: `https://arrakis-dev.onrender.com`
-- **Staging**: `https://arrakis-staging.onrender.com`
 - **Production**: `https://arrakis.onrender.com` (after custom domain setup)
 
 ### 4.3 Custom Domain (Production)
@@ -180,7 +173,6 @@ After deployment, your environments will be available at:
 The GitHub Actions workflows will automatically:
 
 - **Push to `develop`** → Deploy to Development
-- **Push to `staging`** → Deploy to Staging
 - **Push to `master`** → Deploy to Production (requires manual approval)
 
 ### 5.2 Manual Deployments
@@ -189,7 +181,7 @@ Trigger manual deployments via GitHub Actions:
 
 1. Go to GitHub > Actions > "Render.com Deployment"
 2. Click "Run workflow"
-3. Select environment (development/staging/production)
+3. Select environment (development/production)
 4. Click "Run workflow"
 
 ## Environment Groups Strategy
@@ -220,11 +212,6 @@ Your `render.yaml` includes these pre-configured groups:
 - `ENABLE_QUERY_LOGGING=true`
 - `ENABLE_DEV_TOOLS=true`
 
-**`arrakis-staging`** (Staging only):
-- `LOG_LEVEL=info`
-- `NEXT_PUBLIC_ENV=staging`
-- `ENABLE_QUERY_LOGGING=false`
-- `ENABLE_DEV_TOOLS=false`
 
 **`arrakis-prod`** (Production only):
 - `LOG_LEVEL=warn`
@@ -242,14 +229,14 @@ Your `render.yaml` includes these pre-configured groups:
 4. All services automatically get the new config
 
 **Environment-Specific Changes**:
-1. Select the appropriate group (`arrakis-dev`, `arrakis-staging`, `arrakis-prod`)
+1. Select the appropriate group (`arrakis-dev`, `arrakis-prod`)
 2. Add or modify variables
 3. Only services using that group are affected
 
 **Secret Management** (Manual Setup Required):
 Create these groups in Render Dashboard:
 - `arrakis-secrets-dev` → Development API keys
-- `arrakis-secrets-prod` → Production API keys (can be shared with staging)
+- `arrakis-secrets-prod` → Production API keys
 
 ## Environment Management
 
@@ -260,18 +247,11 @@ Create these groups in Render Dashboard:
 - **Database**: Free tier PostgreSQL with sample data
 - **Monitoring**: Debug logging enabled
 
-### Staging Environment
-
-- **Purpose**: Pre-production testing and QA
-- **Auto-deploy**: Yes (from `staging` branch)
-- **Database**: Basic tier PostgreSQL with production-like data
-- **Monitoring**: Info-level logging
-
 ### Production Environment
 
 - **Purpose**: Live application
 - **Auto-deploy**: No (manual approval required)
-- **Database**: Pro tier PostgreSQL with full backups
+- **Database**: Basic tier PostgreSQL with automated backups
 - **Monitoring**: Warning-level logging, error tracking
 
 ## Database Operations
@@ -293,16 +273,13 @@ Access databases via Render Dashboard or direct connection:
 # Development
 psql $DEV_DATABASE_URL
 
-# Staging
-psql $STAGING_DATABASE_URL
-
 # Production (use carefully!)
 psql $PROD_DATABASE_URL
 ```
 
 ### Backups
 
-Render automatically backs up Pro tier databases. For manual backups:
+Render automatically backs up Basic tier and higher databases. For manual backups:
 
 ```bash
 # Backup production
@@ -318,7 +295,6 @@ All environments include automatic health checks at `/api/health`:
 ```bash
 # Check environment health
 curl https://arrakis-dev.onrender.com/api/health
-curl https://arrakis-staging.onrender.com/api/health
 curl https://arrakis.onrender.com/api/health
 ```
 
@@ -332,7 +308,6 @@ curl -sL https://render.com/install.sh | bash
 
 # View logs
 render logs --service arrakis-dev
-render logs --service arrakis-staging
 render logs --service arrakis-prod
 ```
 
@@ -407,19 +382,16 @@ All environments automatically get SSL certificates:
 
 ### Resource Planning
 
-**Development**: Free tier resources sufficient
+**Development**: Free tier resources sufficient (web service, database, Redis, worker)
 
-**Staging**: Basic tier for realistic testing
-
-**Production**: Pro tier for performance and reliability
+**Production**: Basic/Starter tier for cost optimization (~$22/month total)
 
 ### Scaling
 
 Services auto-scale based on traffic:
 
-- Development: 1 instance
-- Staging: 1-2 instances
-- Production: 1-5 instances (configurable)
+- Development: 1 instance (free)
+- Production: 1-2 instances (configurable)
 
 ## Next Steps
 
@@ -448,9 +420,9 @@ The Neon database remains available as backup during transition period.
 This migration provides:
 
 - ✅ **Professional Infrastructure**: Industry-standard deployment setup
-- ✅ **Cost Efficiency**: Right-sized resources for each environment
+- ✅ **Cost Efficiency**: Optimized 2-environment setup (~$22/month total)
 - ✅ **Developer Experience**: Automated workflows and easy management
 - ✅ **Security**: Proper isolation and secret management
 - ✅ **Reliability**: Built-in monitoring, backups, and scaling
 
-Your Arrakis application is now production-ready with proper environment separation and automated deployment workflows!
+Your Arrakis application is now production-ready with cost-optimized environment separation and automated deployment workflows!

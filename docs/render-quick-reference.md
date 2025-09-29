@@ -8,7 +8,6 @@ Fast reference for common Render.com operations with Arrakis.
 ```bash
 # Check all environments
 curl https://arrakis-dev.onrender.com/api/health
-curl https://arrakis-staging.onrender.com/api/health
 curl https://arrakis.onrender.com/api/health
 ```
 
@@ -46,7 +45,6 @@ bun run db:seed
 
 #### Automatic Deployments
 - Push to `develop` → Deploy to Development
-- Push to `staging` → Deploy to Staging
 - Push to `master` → Deploy to Production
 
 #### Manual Deployment
@@ -58,13 +56,11 @@ bun run db:seed
 
 ### Environment URLs
 - **Development**: https://arrakis-dev.onrender.com
-- **Staging**: https://arrakis-staging.onrender.com
 - **Production**: https://arrakis.onrender.com
 
 ### Database URLs
 Access via Render Dashboard → Database → Connection Details:
 - Development: `arrakis-dev-db`
-- Staging: `arrakis-staging-db`
 - Production: `arrakis-prod-db`
 
 ## Environment Variables
@@ -85,7 +81,7 @@ DATABASE_URL=postgresql://user:pass@host:port/db
 REDIS_URL=redis://host:port
 NEXT_PUBLIC_APP_URL=https://service.onrender.com
 NODE_ENV=production
-NEXT_PUBLIC_ENV=development|staging|production
+NEXT_PUBLIC_ENV=development|production
 ```
 
 ## Monitoring
@@ -97,7 +93,6 @@ Dashboard → Service → Logs
 
 # Via Render CLI
 render logs --service arrakis-dev
-render logs --service arrakis-staging
 render logs --service arrakis-prod
 ```
 
@@ -170,8 +165,7 @@ Monitor in Render Dashboard:
 
 ### Environment Configs
 - Development: Free tier, debug logging
-- Staging: Basic tier, info logging
-- Production: Pro tier, warning logging
+- Production: Basic tier, warning logging
 
 ## Support Resources
 

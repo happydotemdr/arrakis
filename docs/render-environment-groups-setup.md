@@ -7,7 +7,6 @@ Complete step-by-step instructions for setting up environment groups in Render D
 ✅ **Updated `render.yaml`** with optimized environment groups:
 - `arrakis-shared` - Common configuration across all environments
 - `arrakis-dev` - Development-specific settings
-- `arrakis-staging` - Staging-specific settings
 - `arrakis-prod` - Production-specific settings
 
 ✅ **Removed Duplication** - Environment-specific variables moved to groups
@@ -53,7 +52,7 @@ OPENAI_API_KEY=sk-proj-[your-production-openai-key]
 
 **Notes**:
 - Use production API keys with appropriate rate limits
-- These keys will be shared between staging and production environments
+- These keys will be used exclusively for production environment
 - Ensure these keys have sufficient quotas for production load
 
 ### Step 2: Update render.yaml to Use Secret Groups (Optional)
@@ -92,14 +91,6 @@ envVarGroups:
   - arrakis-shared
   - arrakis-dev
   - arrakis-secrets-dev  # Add this line
-```
-
-**Staging Services** (arrakis-staging, arrakis-staging-worker):
-```yaml
-envVarGroups:
-  - arrakis-shared
-  - arrakis-staging
-  - arrakis-secrets-prod  # Add this line (shares prod secrets)
 ```
 
 **Production Services** (arrakis-prod, arrakis-prod-worker):
@@ -142,7 +133,7 @@ git push origin feature/phase1-foundation
 #### 3.2 Redeploy Services
 
 1. Go to Render Dashboard
-2. For each service (arrakis-dev, arrakis-staging, arrakis-prod)
+2. For each service (arrakis-dev, arrakis-prod)
 3. Click **"Manual Deploy"** → **"Deploy latest commit"**
 4. Monitor deployment logs for any environment variable issues
 
@@ -208,6 +199,6 @@ After completing this setup:
 - **Principle of Least Privilege**: Only grant access to environment groups as needed
 - **Regular Rotation**: Rotate API keys periodically, especially production keys
 - **Audit Access**: Review who has access to production secret groups quarterly
-- **Separate Keys**: Use different API keys for dev/staging/prod when possible
+- **Separate Keys**: Use different API keys for dev/prod when possible
 
 Your environment groups are now optimized for scalability, security, and maintainability!
