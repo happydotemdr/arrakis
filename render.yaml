@@ -19,7 +19,7 @@ databases:
 
   # Staging Database - Basic tier with pgvector
   - name: arrakis-staging-db
-    plan: basic
+    plan: basic-1gb
     postgresMajorVersion: "16"
     databaseName: arrakis_staging
     user: arrakis_staging_user
@@ -29,7 +29,7 @@ databases:
 
   # Production Database - Pro tier with high availability
   - name: arrakis-prod-db
-    plan: pro
+    plan: pro-4gb
     postgresMajorVersion: "16"
     databaseName: arrakis_production
     user: arrakis_prod_user
