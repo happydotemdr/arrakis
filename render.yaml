@@ -53,21 +53,21 @@ envVarGroups:
       - key: NODE_OPTIONS
         value: "--max-old-space-size=4096"
 
-  # Development secrets (Note: These groups will be created manually in Render Dashboard)
-  # - name: arrakis-secrets-dev
-  #   envVars:
-  #     - key: ANTHROPIC_API_KEY
-  #       value: # Set in Render Dashboard
-  #     - key: OPENAI_API_KEY
-  #       value: # Set in Render Dashboard
+   Development secrets (Note: These groups will be created manually in Render Dashboard)
+   - name: arrakis-secrets-dev
+     envVars:
+       - key: ANTHROPIC_API_KEY
+         value: # Set in Render Dashboard
+       - key: OPENAI_API_KEY
+         value: # Set in Render Dashboard
 
-  # Production secrets (shared with staging)
-  # - name: arrakis-secrets-prod
-  #   envVars:
-  #     - key: ANTHROPIC_API_KEY
-  #       value: # Set in Render Dashboard
-  #     - key: OPENAI_API_KEY
-  #       value: # Set in Render Dashboard
+   Production secrets (shared with staging)
+   - name: arrakis-secrets-prod
+     envVars:
+       - key: ANTHROPIC_API_KEY
+         value: # Set in Render Dashboard
+       - key: OPENAI_API_KEY
+         value: # Set in Render Dashboard
 
 # Database Definitions
 databases:
@@ -149,6 +149,7 @@ services:
     envVarGroups:
       - arrakis-shared
       - arrakis-dev
+      - arrakis-secrets-dev
 
   # ===================
   # STAGING ENVIRONMENT
@@ -192,6 +193,7 @@ services:
     envVarGroups:
       - arrakis-shared
       - arrakis-staging
+      - arrakis-secrets-dev
 
   # ===================
   # PRODUCTION ENVIRONMENT
@@ -235,6 +237,7 @@ services:
     envVarGroups:
       - arrakis-shared
       - arrakis-prod
+      - arrakis-secrets-prod
 
 # ===================
 # BACKGROUND WORKERS (Optional - for job processing)
@@ -275,6 +278,7 @@ services:
     envVarGroups:
       - arrakis-shared
       - arrakis-dev
+      - arrakis-secrets-dev
 
   # Staging Worker
   - type: pserv
@@ -311,6 +315,7 @@ services:
     envVarGroups:
       - arrakis-shared
       - arrakis-staging
+      - arrakis-secrets-dev
 
   # Production Worker
   - type: pserv
@@ -347,3 +352,4 @@ services:
     envVarGroups:
       - arrakis-shared
       - arrakis-prod
+      - arrakis-secrets-prod
