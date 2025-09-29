@@ -1,52 +1,89 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)",
       "Bash(git status)",
       "Bash(git diff)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
       "Bash(git log *)",
       "Bash(git branch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
       "Bash(git checkout *)",
-      "Bash(git pull)",
+      "Bash(npm run *)",
+      "Bash(npm install:*)",
       "Bash(node *)",
       "Bash(npx *)",
       "Bash(python *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "WebSearch",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:neon.com)",
+      "mcp__Ref__ref_read_url",
+      "mcp__Ref__ref_search_documentation",
+      "mcp__render__list_workspaces",
+      "mcp__render__get_selected_workspace",
+      "mcp__render__list_services",
+      "mcp__render__list_postgres_instances",
+      "mcp__render__get_service",
+      "mcp__render__list_deploys"
     ],
     "ask": [
       "Bash(git push *)",
+      "Bash(git rebase *)",
       "Bash(rm *)",
       "Bash(mv *)",
       "Write(.gitignore)",
       "Write(package.json)",
-      "WebFetch"
+      "Write(tsconfig.json)",
+      "WebFetch",
+      "mcp__render__create_*",
+      "mcp__render__update_*",
+      "mcp__render__delete_*"
     ],
-    "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./secrets/**)",
-      "Read(./config/credentials.*)",
-      "Read(./.claude/settings.local.json)",
-      "Write(./.env)",
-      "Write(./.env.*)",
-      "Write(./secrets/**)",
-      "Bash(curl *)",
-      "Bash(wget *)",
-      "Bash(sudo *)",
-      "Bash(su *)",
-      "Bash(chmod +x *)"
-    ]
+    "deny": []
+  },
+  "commands": {
+    "agents": ".claude/commands/agents.md",
+    "deploy": ".claude/commands/deploy.md",
+    "review": ".claude/commands/review.md",
+    "focus-frontend": ".claude/commands/focus-frontend.md",
+    "focus-backend": ".claude/commands/focus-backend.md",
+    "focus-database": ".claude/commands/focus-database.md"
   },
   "defaultMode": "acceptEdits",
   "includeCoAuthoredBy": true,
   "cleanupPeriodDays": 45,
   "env": {
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
-    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
+    "CLAUDE_HOOK_API_URL": "https://arrakis-prod.onrender.com/api/claude-hooks",
+    "CLAUDE_HOOK_DEBUG": "false",
+    "CLAUDE_HOOK_ENABLED": "true",
+    "CLAUDE_HOOK_SESSION_START": "true",
+    "CLAUDE_HOOK_USER_PROMPT": "true",
+    "CLAUDE_HOOK_PRE_TOOL": "false",
+    "CLAUDE_HOOK_POST_TOOL": "false",
+    "CLAUDE_HOOK_STOP": "true",
+    "CLAUDE_HOOK_SESSION_END": "true",
+    "CLAUDE_HOOK_FAIL_SILENTLY": "true",
+    "CLAUDE_HOOK_TIMEOUT": "5000",
+    "CLAUDE_HOOK_RETRY_ATTEMPTS": "1",
+    "CLAUDE_HOOK_RETRY_DELAY": "500"
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "timeout": 10,
+            "env": {
+              "CLAUDE_HOOK_EVENT": "SessionStart"
+            }
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -54,6 +91,14 @@
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/inject_context.py",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "timeout": 10,
+            "env": {
+              "CLAUDE_HOOK_EVENT": "UserPromptSubmit"
+            }
           }
         ]
       }
@@ -66,6 +111,26 @@
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/security_check.py",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "timeout": 10,
+            "env": {
+              "CLAUDE_HOOK_EVENT": "PreToolUse"
+            }
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "timeout": 10,
+            "env": {
+              "CLAUDE_HOOK_EVENT": "PreToolUse"
+            }
           }
         ]
       }
@@ -78,6 +143,54 @@
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format_files.py",
             "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "timeout": 10,
+            "env": {
+              "CLAUDE_HOOK_EVENT": "PostToolUse"
+            }
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "timeout": 10,
+            "env": {
+              "CLAUDE_HOOK_EVENT": "PostToolUse"
+            }
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "timeout": 10,
+            "env": {
+              "CLAUDE_HOOK_EVENT": "Stop"
+            }
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "timeout": 15,
+            "env": {
+              "CLAUDE_HOOK_EVENT": "SessionEnd"
+            }
           }
         ]
       }
