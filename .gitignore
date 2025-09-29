@@ -1,6 +1,11 @@
 # Dependencies
 node_modules/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.yarn-integrity
 
 # Environment variables
 .env
@@ -8,26 +13,47 @@ npm-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
 
 # Logs
-logs
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
 # Runtime data
-pids
+pids/
 *.pid
 *.seed
 *.pid.lock
 
 # Coverage directory used by tools like istanbul
 coverage/
+.nyc_output/
 
-# Temporary folders
+# Temporary folders and files
 tmp/
 temp/
+.tmp/
+.temp/
+*.tmp
+*.temp
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
 
 # OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 Desktop.ini
 
@@ -38,9 +64,25 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
+*~
+.project
+.settings/
 
 # Optional REPL history
 .node_repl_history
 
+# Test artifacts
+test-results/
+coverage.xml
+*.lcov
+
+# Build artifacts (in case you add a build process later)
+dist/
+build/
+out/
+
 # Claude Code local settings (personal overrides)
 .claude/settings.local.json
+
+# Server test files
+server-test.log
