@@ -10,7 +10,7 @@ databases:
   # Development Database - Free tier
   - name: arrakis-dev-db
     plan: free
-    postgresMajorVersion: "16"
+    postgresMajorVersion: "17"
     databaseName: arrakis_dev
     user: arrakis_dev_user
     ipAllowList:
@@ -20,7 +20,7 @@ databases:
   # Production Database - Smallest paid tier (no high availability)
   - name: arrakis-prod-db
     plan: basic-256mb
-    postgresMajorVersion: "16"
+    postgresMajorVersion: "17"
     databaseName: arrakis_production
     user: arrakis_prod_user
     ipAllowList:
@@ -156,31 +156,3 @@ services:
       - fromGroup: arrakis-dev
       - fromGroup: arrakis-secrets-dev
 
-  # Production Worker - Starter tier
-  - type: pserv
-    name: arrakis-prod-worker
-    runtime: node
-    plan: starter
-    region: oregon
-    repo: https://github.com/happydotemdr/arrakis.git
-    branch: master
-    autoDeploy: false
-    buildCommand: "corepack enable && bun install"
-    startCommand: "bun run worker:start"
-
-    envVars:
-      # Database and Redis connections
-      - key: DATABASE_URL
-        fromDatabase:
-          name: arrakis-prod-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: arrakis-prod-redis
-          type: keyvalue
-          property: connectionString
-
-      # Reference existing environment groups
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-prod
-      - fromGroup: arrakis-secrets-prod
