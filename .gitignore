@@ -76,10 +76,23 @@ test-results/
 coverage.xml
 *.lcov
 
-# Build artifacts (in case you add a build process later)
+# Build artifacts and Next.js
 dist/
 build/
 out/
+.next/
+.vercel/
+
+# Next.js specific
+next-env.d.ts
+.turbo/
+.contentlayer/
+.next-auth/
+
+# Prisma
+prisma/migrations/dev/
+*.db
+*.db-journal
 
 # Claude Code local settings (personal overrides)
 .claude/settings.local.json

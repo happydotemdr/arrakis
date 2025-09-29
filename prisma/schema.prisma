@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+// Main conversation entity
+model Conversation {
+  id          String    @id @default(cuid())
+  sessionId   String?   @map("session_id") // Claude Code session identifier
+  projectPath String?   @map("project_path") // File system path to project
+  title       String?   // Auto-generated or user-provided title
+  description String?   // Brief description of conversation
+  startedAt   DateTime  @default(now()) @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  metadata    Json?     // Additional conversation metadata
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  messages              Message[]
+  conversationEmbeddings ConversationEmbedding[]
+
+  // Indexes for performance
+  @@index([sessionId])
+  @@index([projectPath])
+  @@index([startedAt])
+  @@index([endedAt])
+  @@map("conversations")
+}
+
+// Message entity with enhanced tracking
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  role           Role
+  content        String   @db.Text
+  toolCalls      Json?    @map("tool_calls") // Array of tool invocations
+  timestamp      DateTime @default(now())
+  metadata       Json?    // Additional message metadata
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  toolUses     ToolUse[]
+
+  // Indexes
+  @@index([conversationId])
+  @@index([role])
+  @@index([timestamp])
+  @@map("messages")
+}
+
+// Tool usage tracking
+model ToolUse {
+  id         String   @id @default(cuid())
+  messageId  String   @map("message_id")
+  toolName   String   @map("tool_name")
+  parameters Json?    // Tool parameters as JSON
+  response   Json?    // Tool response/result as JSON
+  duration   Int?     // Execution duration in milliseconds
+  status     String?  // success, error, timeout, etc.
+  timestamp  DateTime @default(now())
+  metadata   Json?    // Additional tool use metadata
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([messageId])
+  @@index([toolName])
+  @@index([timestamp])
+  @@index([status])
+  @@map("tool_uses")
+}
+
+// Conversation embeddings for semantic search
+model ConversationEmbedding {
+  id             String                  @id @default(cuid())
+  conversationId String                  @map("conversation_id")
+  chunkText      String                  @db.Text @map("chunk_text")
+  chunkIndex     Int                     @map("chunk_index")
+  embedding      Unsupported("vector(1536)")? // OpenAI text-embedding-3-small dimension
+  metadata       Json?                   // Chunk metadata (tokens, model, etc.)
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([conversationId])
+  @@index([chunkIndex])
+  @@map("conversation_embeddings")
+}
+
+// Role enum for messages
+enum Role {
+  user
+  assistant
+  system
+  function
+  tool
+}

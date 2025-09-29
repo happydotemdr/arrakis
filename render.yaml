@@ -1,9 +1,9 @@
 # Arrakis Infrastructure Blueprint - Render.com
-# Minimal configuration - Single database + Single web service
+# Next.js 15 application with PostgreSQL database
 
 # Database Definitions
 databases:
-  # Production Database - Smallest paid tier
+  # Production Database
   - name: arrakis-prod-db
     plan: basic-256mb
     postgresMajorVersion: "17"
@@ -15,7 +15,7 @@ databases:
 
 # Service Definitions
 services:
-  # Production Web Service - Minimal Hello World
+  # Next.js Web Service
   - type: web
     name: arrakis-prod
     runtime: node
@@ -23,10 +23,10 @@ services:
     region: oregon
     repo: https://github.com/happydotemdr/arrakis.git
     branch: master
-    autoDeploy: false  # Manual deployments for production safety
-    buildCommand: "npm install"
+    autoDeploy: false  # Manual deployments for safety
+    buildCommand: "npm install && npm run build"
     startCommand: "npm start"
-    healthCheckPath: /health
+    healthCheckPath: /
 
     envVars:
       # Database connection
@@ -34,4 +34,25 @@ services:
         fromDatabase:
           name: arrakis-prod-db
           property: connectionString
+
+      # Direct database URL for Prisma migrations
+      - key: DIRECT_URL
+        fromDatabase:
+          name: arrakis-prod-db
+          property: connectionString
+
+      # Next.js configuration
+      - key: NODE_ENV
+        value: production
+
+      # NextAuth configuration (for future auth features)
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+
+      - key: NEXTAUTH_URL
+        value: https://arrakis-prod.onrender.com
+
+      # Claude Hook API Key for authentication
+      - key: CLAUDE_HOOK_API_KEY
+        value: 7d3e4490f7d8c68f82dd9e93d55fa714a34107e96b654c6373eba45c99aa7b38
 

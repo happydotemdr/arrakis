@@ -1,165 +1,181 @@
-# Arrakis - Claude Code Conversation Capture
+# Arrakis - Conversation Persistence System
 
-A modern conversation capture and semantic search system for Claude Code
-sessions with AI-powered insights and real-time collaboration features.
+A modern Next.js 15.5.4 application for persistent conversation management built with React 19, TypeScript, tRPC, and Prisma.
 
-## 🚀 Production Ready - Phases 1 & 2 Complete + Schema Evolution ✅
+## 🚀 Fresh Next.js 15 Setup - September 29, 2025
 
-**Current Status**: Fully functional conversation capture and web interface
-system with evolved database schema
+**Current Status**: Complete modern Next.js application with conversation persistence architecture
 
-- ✅ **Phase 1 Complete** - Foundation and automatic capture system
-- ✅ **Phase 2 Complete** - Full web interface with 54 React components
-- ✅ **Schema Evolution** - Database recovery and alignment (Sept 27, 2025)
-- 🚀 **Phase 3 Ready** - AI-powered insights and semantic search
+- ✅ **Next.js 15.5.4** - Latest version with App Router
+- ✅ **React 19.1.1** - Latest React with new features
+- ✅ **TypeScript 5.9.2** - Full type safety throughout
+- ✅ **tRPC 11.6.0** - End-to-end type-safe APIs
+- ✅ **Prisma 6.16.2** - Modern database ORM with migrations
 
-## 🎯 What's Working Now
+## 🎯 What You Get
 
-- **Automatic Capture**: Background service captures all Claude Code
-  conversations
-- **Modern Web Interface**: Next.js 15 app with responsive design and real-time
-  dashboard
-- **Session Management**: Browse, filter, and view conversations with full
-  metadata
-- **Search Foundation**: Text search with extensible architecture for semantic
-  search
-- **Production Build**: TypeScript compilation passing, ready for deployment
-- **Database Recovery**: Successfully resolved schema misalignment with zero errors
+- **Modern Architecture**: Next.js 15 with App Router, React 19, TypeScript 5.9
+- **Type-Safe APIs**: tRPC for end-to-end type safety from database to frontend
+- **Database Ready**: Prisma ORM with PostgreSQL schema for conversations and messages
+- **UI Components**: Tailwind CSS with shadcn/ui components for consistent design
+- **Development Tools**: ESLint, Prettier, and TypeScript for code quality
 
-## 🔧 Recent Major Work - September 27, 2025
+## 🏗️ Architecture
 
-**Schema Evolution & Recovery**: Successfully resolved post-GitHub database/code
-misalignment through systematic schema evolution:
+### Technology Stack
+- **Frontend**: Next.js 15.5.4 with React 19.1.1 and TypeScript 5.9.2
+- **API Layer**: tRPC 11.6.0 with @tanstack/react-query 5.90.2
+- **Database**: PostgreSQL with Prisma ORM 6.16.2
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **AI Integration**: OpenAI SDK 5.23.1 for future AI features
+- **Validation**: Zod 4.1.11 for runtime type checking
 
-### Database Enhancements
-- ✅ **Added `message_count`** to sessions table with automatic counting
-- ✅ **Added `embedding_status`** to both sessions and messages tables
-- ✅ **Updated existing data** - All 4 sessions now have correct message counts
-- ✅ **Preserved data integrity** - No data loss during schema evolution
+### Database Schema
+```sql
+-- Conversations table
+model Conversation {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  messages    Message[]
+}
 
-### Code Synchronization
-- ✅ **Fixed 20+ TypeScript errors** across core search and context files
-- ✅ **Updated Drizzle schema** to match evolved database structure
-- ✅ **Synchronized field references** (`timestamp` → `createdAt`, etc.)
-- ✅ **Added missing imports** (`sql` import in context-retrieval.ts)
-
-### Quality Verification
-- ✅ **Zero TypeScript compilation errors** - Clean builds achieved
-- ✅ **Successful production builds** - All 10 pages optimized
-- ✅ **Database verification** - Real queries working with live data
-- ✅ **Schema alignment** - Code expectations match database reality
+-- Messages table
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           Role     // user | assistant | system
+  content        String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+```
 
 ## Quick Start
 
+### 1. Install Dependencies
 ```bash
-# Install dependencies
-bun install
+npm install
+```
 
-# Start development server
-bun run dev
+### 2. Set Up Environment
+```bash
+# Copy environment template
+cp .env.example .env.local
 
-# Build for production
-bun run build
+# Edit .env.local with your database URL
+# DATABASE_URL="postgresql://username:password@host:port/database?sslmode=require"
+```
 
-# Run linting
-bun run lint
+### 3. Set Up Database
+```bash
+# Generate Prisma client
+npm run db:generate
 
-# Type check
-bun run type-check
+# Push schema to database
+npm run db:push
+
+# Optional: Seed with sample data
+npm run db:seed
+```
+
+### 4. Start Development Server
+```bash
+npm run dev
+```
+
+### 5. Available Scripts
+```bash
+npm run dev         # Start development server
+npm run build       # Build for production
+npm run start       # Start production server
+npm run lint        # Run ESLint (using v9 flat config)
+npm run lint:fix    # Run ESLint and auto-fix issues
+npm run type-check  # TypeScript type checking
+npm run db:studio   # Open Prisma Studio
+npm run format      # Format code with Prettier
+npm run check       # Run type-check and lint
 ```
 
 ## Project Structure
 
 ```
 arrakis/
-├── app/                 # Next.js App Router (54 React components)
-│   ├── (dashboard)/    # Dashboard layout with sidebar navigation
-│   ├── api/           # tRPC API endpoints
-│   └── globals.css    # Global styles
-├── components/          # React components (organized by feature)
-│   ├── ui/             # shadcn/ui components
-│   ├── dashboard/      # Dashboard-specific components
-│   ├── sessions/       # Session management components
-│   ├── search/         # Search interface components
-│   └── capture/        # Capture service components
-├── lib/                # Core libraries
-│   ├── db/            # Drizzle ORM schema & queries
-│   ├── capture/       # Automatic conversation capture
-│   ├── api/           # tRPC routers (sessions, search, capture)
-│   └── utils.ts       # Utility functions
-├── types/              # TypeScript definitions
-├── scripts/            # Database and utility scripts
-└── docs/               # Implementation plans and documentation
+├── src/
+│   ├── app/                    # Next.js 15 App Router
+│   │   ├── api/trpc/[trpc]/   # tRPC API routes
+│   │   ├── conversations/     # Conversations pages
+│   │   ├── globals.css        # Global Tailwind styles
+│   │   ├── layout.tsx         # Root layout
+│   │   └── page.tsx           # Home page
+│   ├── components/
+│   │   └── ui/               # shadcn/ui components
+│   ├── lib/
+│   │   ├── trpc/             # tRPC client and server setup
+│   │   ├── db.ts             # Prisma client
+│   │   └── utils.ts          # Utility functions
+│   ├── server/
+│   │   └── api/              # tRPC server routes
+│   ├── types/                # TypeScript type definitions
+│   └── utils/                # Shared utilities
+├── prisma/
+│   ├── schema.prisma         # Database schema
+│   └── seed.ts               # Database seeding
+├── package.json              # Dependencies and scripts
+├── tsconfig.json            # TypeScript configuration
+├── tailwind.config.ts       # Tailwind CSS configuration
+├── next.config.js           # Next.js configuration
+└── .env.example             # Environment variables template
 ```
 
-## Development Status
+## Features
 
-**Phase 1 & 2 Complete** ✅ - Ready for Phase 3 advanced features
+### Core Functionality
+- ✅ **Conversation Management** - Create, read, update, and delete conversations
+- ✅ **Message Storage** - Store messages with role-based categorization (user/assistant/system)
+- ✅ **Metadata Support** - Flexible JSON metadata for extended message context
+- ✅ **Type Safety** - Full TypeScript coverage from database to frontend
+- ✅ **Real-time Updates** - Powered by tRPC and React Query
 
-### ✅ Phase 1 Completed (Foundation)
+### Technical Features
+- ✅ **Modern React** - React 19 with latest features and optimizations
+- ✅ **App Router** - Next.js 15 App Router for optimal performance
+- ✅ **API Layer** - tRPC for type-safe client-server communication
+- ✅ **Database ORM** - Prisma with PostgreSQL for robust data management
+- ✅ **UI Components** - Tailwind CSS + shadcn/ui for consistent design
+- ✅ **Development Tools** - ESLint 9 (flat config), Prettier, TypeScript for code quality
 
-- [x] Next.js 15 + TypeScript + React 19
-- [x] Neon PostgreSQL database with pgvector
-- [x] Drizzle ORM with complete schema
-- [x] Automatic Claude Code conversation capture
-- [x] Real-time proxy injection system
-- [x] Rich metadata extraction and storage
+## Development
 
-### ✅ Phase 2 Completed (Web Interface)
+### Prerequisites
+- Node.js 18+ (preferably 20+)
+- PostgreSQL database (local or hosted)
+- npm/yarn/pnpm package manager
 
-- [x] Modern responsive web application
-- [x] 54 React components with Tailwind CSS + shadcn/ui
-- [x] tRPC API layer with type safety
-- [x] Real-time dashboard with capture monitoring
-- [x] Session browsing with pagination and filtering
-- [x] Basic search functionality
-- [x] Production build optimization
+### Development Workflow
+1. **Database First** - Schema changes go through Prisma migrations
+2. **Type-Safe APIs** - tRPC ensures end-to-end type safety
+3. **Component-Driven** - UI built with reusable shadcn/ui components
+4. **Code Quality** - Automated formatting and linting
 
-### 🚀 Phase 3 Ready (Advanced Features)
+### Deployment
+Ready for deployment to platforms like:
+- **Vercel** - Optimized for Next.js applications
+- **Render** - Easy PostgreSQL + Node.js hosting
+- **Railway** - Simple full-stack deployment
+- **Netlify** - Static and serverless functions
 
-- [ ] AI-powered semantic search with vector embeddings
-- [ ] Conversation insights and analysis
-- [ ] Multi-user collaboration features
-- [ ] Public API and integrations
-- [ ] Performance optimization and monitoring
+## Next Steps
 
-See the [Phase 3 Implementation Plan](docs/phase-3-implementation-plan.md) for
-the next development phase.
+1. **Set up your database** - Configure PostgreSQL connection
+2. **Run initial setup** - Install dependencies and run migrations
+3. **Start building** - Add your conversation features
+4. **Customize UI** - Modify components to match your design
+5. **Add features** - Extend with search, AI integration, or collaboration tools
 
-## Environment Setup
+## License
 
-Copy `.env.example` to `.env.local` and configure:
-
-- `DATABASE_URL` - Neon PostgreSQL connection
-- `OPENAI_API_KEY` - For text embeddings
-- `REDIS_URL` - For job queue (optional in dev)
-
-## Tech Stack
-
-### Core Technologies ✅ Implemented
-
-- **Framework**: Next.js 15 with App Router and React 19
-- **Runtime**: Bun runtime for fast development and builds
-- **Language**: TypeScript 5.9 with strict type checking
-- **Styling**: Tailwind CSS + shadcn/ui component library
-- **Database**: Neon PostgreSQL with pgvector extension
-- **ORM**: Drizzle ORM with type-safe queries
-- **API Layer**: tRPC v11.6 for end-to-end type safety
-
-### Additional Features ✅ Operational
-
-- **State Management**: TanStack Query for server state
-- **Build System**: Optimized production builds
-- **Capture System**: Automatic Claude Code proxy injection
-- **UI Components**: 54 responsive React components
-- **Real-time Features**: Live capture monitoring dashboard
-
-## Documentation
-
-- **[Phase 1 Plan](docs/phase-1-implementation-plan.md)** - Foundation setup (✅
-  Complete)
-- **[Phase 2 Plan](docs/phase-2-implementation-plan.md)** - Web interface (✅
-  Complete)
-- **[Phase 3 Plan](docs/phase-3-implementation-plan.md)** - Advanced features
-  (📋 Ready)
-- **[Future Enhancements](docs/future-enhancements.md)** - Long-term roadmap
+This project is ready for your use - build something amazing!
