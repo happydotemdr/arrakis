@@ -1,13 +1,13 @@
 # Arrakis Infrastructure Blueprint - Render.com
-# Production-ready deployment with Render best practices
+# Cost-optimized deployment with minimal resources
 
-# Preview Environments
-previews:
-  generation: automatic
+# Preview Environments (disabled to save costs)
+# previews:
+#   generation: manual
 
 # Database Definitions
 databases:
-  # Development Database - Free tier with pgvector
+  # Development Database - Free tier
   - name: arrakis-dev-db
     plan: free
     postgresMajorVersion: "16"
@@ -17,29 +17,15 @@ databases:
       - source: 0.0.0.0/0
         description: "Allow all (development only)"
 
-  # Staging Database - Basic tier with pgvector
-  - name: arrakis-staging-db
-    plan: basic-1gb
-    postgresMajorVersion: "16"
-    databaseName: arrakis_staging
-    user: arrakis_staging_user
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: "Staging access"
-
-  # Production Database - Pro tier with high availability
+  # Production Database - Smallest paid tier (no high availability)
   - name: arrakis-prod-db
-    plan: pro-4gb
+    plan: basic-256mb
     postgresMajorVersion: "16"
     databaseName: arrakis_production
     user: arrakis_prod_user
-    highAvailability:
-      enabled: true
-    diskSizeGB: 50
     ipAllowList:
       - source: 0.0.0.0/0
-        description: "Production access (configure specific IPs in production)"
-
+        description: "Production access"
 
 # Service Definitions
 services:
@@ -47,7 +33,7 @@ services:
   # REDIS KEY-VALUE STORES
   # ===================
 
-  # Development Redis
+  # Development Redis - Free tier
   - type: keyvalue
     name: arrakis-dev-redis
     plan: free
@@ -56,31 +42,22 @@ services:
       - source: 0.0.0.0/0
         description: "Development access"
 
-  # Staging Redis
+  # Production Redis - Starter tier (smallest paid)
   - type: keyvalue
-    name: arrakis-staging-redis
+    name: arrakis-prod-redis
     plan: starter
     region: oregon
     ipAllowList:
       - source: 0.0.0.0/0
-        description: "Staging access"
+        description: "Production access"
 
-  # Production Redis with optimized settings
-  - type: keyvalue
-    name: arrakis-prod-redis
-    plan: standard
-    region: oregon
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: "Production access (configure specific IPs in production)"
   # ===================
   # DEVELOPMENT ENVIRONMENT
   # ===================
   - type: web
     name: arrakis-dev
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     repo: https://github.com/happydotemdr/arrakis.git
     branch: develop
@@ -88,28 +65,6 @@ services:
     buildCommand: "corepack enable && bun install && bun run build"
     startCommand: "bun run start"
     healthCheckPath: /api/health
-    maxShutdownDelaySeconds: 60
-
-    # Auto-scaling configuration
-    scaling:
-      minInstances: 1
-      maxInstances: 2
-      targetCPUPercent: 70
-
-    # Preview environments
-    previews:
-      generation: automatic
-
-    # Build filtering
-    buildFilter:
-      paths:
-        - "app/**/*"
-        - "components/**/*"
-        - "lib/**/*"
-        - "package.json"
-      ignoredPaths:
-        - "docs/**/*"
-        - "*.md"
 
     envVars:
       # Database and Redis connections
@@ -133,56 +88,12 @@ services:
       - fromGroup: arrakis-secrets-dev
 
   # ===================
-  # STAGING ENVIRONMENT
-  # ===================
-  - type: web
-    name: arrakis-staging
-    runtime: node
-    plan: standard
-    region: oregon
-    repo: https://github.com/happydotemdr/arrakis.git
-    branch: staging
-    autoDeploy: true
-    buildCommand: "corepack enable && bun install && bun run build"
-    startCommand: "bun run start"
-    healthCheckPath: /api/health
-    maxShutdownDelaySeconds: 120
-
-    # Auto-scaling configuration
-    scaling:
-      minInstances: 1
-      maxInstances: 3
-      targetCPUPercent: 60
-      targetMemoryPercent: 70
-
-    envVars:
-      # Database and Redis connections
-      - key: DATABASE_URL
-        fromDatabase:
-          name: arrakis-staging-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: arrakis-staging-redis
-          type: keyvalue
-          property: connectionString
-
-      # Environment-specific URLs
-      - key: NEXT_PUBLIC_APP_URL
-        value: https://arrakis-staging.onrender.com
-
-      # Reference existing environment groups
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-staging
-      - fromGroup: arrakis-secrets-prod  # Use prod secrets for staging
-
-  # ===================
   # PRODUCTION ENVIRONMENT
   # ===================
   - type: web
     name: arrakis-prod
     runtime: node
-    plan: pro
+    plan: starter
     region: oregon
     repo: https://github.com/happydotemdr/arrakis.git
     branch: master
@@ -190,18 +101,6 @@ services:
     buildCommand: "corepack enable && bun install && bun run build"
     startCommand: "bun run start"
     healthCheckPath: /api/health
-    maxShutdownDelaySeconds: 300
-
-    # Production auto-scaling
-    scaling:
-      minInstances: 2
-      maxInstances: 10
-      targetCPUPercent: 50
-      targetMemoryPercent: 60
-
-    # Custom domains (configure in Render Dashboard)
-    domains:
-      - arrakis.onrender.com
 
     envVars:
       # Database and Redis connections
@@ -225,14 +124,14 @@ services:
       - fromGroup: arrakis-secrets-prod
 
   # ===================
-  # BACKGROUND WORKERS
+  # BACKGROUND WORKERS (Optional - only if needed)
   # ===================
 
-  # Development Worker
+  # Development Worker - Free tier
   - type: pserv
     name: arrakis-dev-worker
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     repo: https://github.com/happydotemdr/arrakis.git
     branch: develop
@@ -257,52 +156,17 @@ services:
       - fromGroup: arrakis-dev
       - fromGroup: arrakis-secrets-dev
 
-  # Staging Worker
-  - type: pserv
-    name: arrakis-staging-worker
-    runtime: node
-    plan: standard
-    region: oregon
-    repo: https://github.com/happydotemdr/arrakis.git
-    branch: staging
-    autoDeploy: true
-    buildCommand: "corepack enable && bun install"
-    startCommand: "bun run worker:start"
-
-    envVars:
-      # Database and Redis connections
-      - key: DATABASE_URL
-        fromDatabase:
-          name: arrakis-staging-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: arrakis-staging-redis
-          type: keyvalue
-          property: connectionString
-
-      # Reference existing environment groups
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-staging
-      - fromGroup: arrakis-secrets-prod
-
-  # Production Worker with persistent disk
+  # Production Worker - Starter tier
   - type: pserv
     name: arrakis-prod-worker
     runtime: node
-    plan: pro
+    plan: starter
     region: oregon
     repo: https://github.com/happydotemdr/arrakis.git
     branch: master
     autoDeploy: false
     buildCommand: "corepack enable && bun install"
     startCommand: "bun run worker:start"
-
-    # Persistent disk for worker data
-    disk:
-      name: worker-data
-      mountPath: /app/data
-      sizeGB: 10
 
     envVars:
       # Database and Redis connections
