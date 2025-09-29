@@ -1,83 +1,21 @@
 # Arrakis Infrastructure Blueprint - Render.com
-# Complete dev/staging/prod environment setup with proper separation
+# Production-ready deployment with Render best practices
 
-# Environment Groups - Shared configurations across environments
-# Shared configurations for all environments
-
-envVarGroups:
-  - name: arrakis-shared
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_TELEMETRY_DISABLED
-        value: "1"
-      - key: FORCE_COLOR
-        value: "1"
-      - key: NEXT_PUBLIC_APP_NAME
-        value: Arrakis
-
-  # Development environment variables
-  - name: arrakis-dev
-    envVars:
-      - key: LOG_LEVEL
-        value: debug
-      - key: NEXT_PUBLIC_ENV
-        value: development
-      - key: ENABLE_QUERY_LOGGING
-        value: "true"
-      - key: ENABLE_DEV_TOOLS
-        value: "true"
-
-  # Staging environment variables
-  - name: arrakis-staging
-    envVars:
-      - key: LOG_LEVEL
-        value: info
-      - key: NEXT_PUBLIC_ENV
-        value: staging
-      - key: ENABLE_QUERY_LOGGING
-        value: "false"
-      - key: ENABLE_DEV_TOOLS
-        value: "false"
-
-  # Production environment variables
-  - name: arrakis-prod
-    envVars:
-      - key: LOG_LEVEL
-        value: warn
-      - key: NEXT_PUBLIC_ENV
-        value: production
-      - key: ENABLE_QUERY_LOGGING
-        value: "false"
-      - key: ENABLE_DEV_TOOLS
-        value: "false"
-      - key: NODE_OPTIONS
-        value: "--max-old-space-size=4096"
-
-   # Development secrets (Note: These groups will be created manually in Render Dashboard)
-   - name: arrakis-secrets-dev
-     envVars:
-       - key: ANTHROPIC_API_KEY
-         value: # Set in Render Dashboard
-       - key: OPENAI_API_KEY
-         value: # Set in Render Dashboard
-
-   # Production secrets (shared with staging)
-   - name: arrakis-secrets-prod
-     envVars:
-       - key: ANTHROPIC_API_KEY
-         value: # Set in Render Dashboard
-       - key: OPENAI_API_KEY
-         value: # Set in Render Dashboard
+# Preview Environments
+previews:
+  generation: automatic
 
 # Database Definitions
-# Development Database - Free tier with pgvector
 databases:
+  # Development Database - Free tier with pgvector
   - name: arrakis-dev-db
     plan: free
     postgresMajorVersion: "16"
     databaseName: arrakis_dev
     user: arrakis_dev_user
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: "Allow all (development only)"
 
   # Staging Database - Basic tier with pgvector
   - name: arrakis-staging-db
@@ -85,26 +23,48 @@ databases:
     postgresMajorVersion: "16"
     databaseName: arrakis_staging
     user: arrakis_staging_user
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: "Staging access"
 
-  # Production Database - Pro tier with pgvector and high availability
+  # Production Database - Pro tier with high availability
   - name: arrakis-prod-db
     plan: pro
     postgresMajorVersion: "16"
     databaseName: arrakis_production
     user: arrakis_prod_user
+    highAvailability:
+      enabled: true
+    diskSizeGB: 50
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: "Production access (configure specific IPs in production)"
 
-# Redis Instances for Job Processing
-  # Development Redis - Free tier
+# Redis Key-Value Stores
+  # Development Redis
   - name: arrakis-dev-redis
+    type: redis
     plan: free
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: "Development access"
 
-  # Staging Redis - Starter tier
+  # Staging Redis
   - name: arrakis-staging-redis
+    type: redis
     plan: starter
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: "Staging access"
 
-  # Production Redis - Standard tier with persistence
+  # Production Redis with persistence
   - name: arrakis-prod-redis
+    type: redis
     plan: standard
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: "Production access (configure specific IPs in production)"
 
 # Service Definitions
 services:
@@ -122,35 +82,47 @@ services:
     buildCommand: "corepack enable && bun install && bun run build"
     startCommand: "bun run start"
     healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 60
+
+    # Auto-scaling configuration
+    scaling:
+      minInstances: 1
+      maxInstances: 2
+      targetCPUPercent: 70
+
+    # Preview environments
+    previews:
+      generation: automatic
+      buildFilter:
+        paths:
+          - "app/**/*"
+          - "components/**/*"
+          - "lib/**/*"
+          - "package.json"
+        ignoredPaths:
+          - "docs/**/*"
+          - "*.md"
+
     envVars:
-      # Database connection
+      # Database and Redis connections
       - key: DATABASE_URL
         fromDatabase:
           name: arrakis-dev-db
           property: connectionString
-
-      # Redis connection
       - key: REDIS_URL
         fromDatabase:
           name: arrakis-dev-redis
           property: connectionString
 
-      # Public URL for the development environment
+      # Environment-specific URLs
       - key: NEXT_PUBLIC_APP_URL
         value: https://arrakis-dev.onrender.com
 
-      # AI API Keys - Secrets (to be provided during setup)
-      - key: ANTHROPIC_API_KEY
-        sync: false
-
-      - key: OPENAI_API_KEY
-        sync: false
-
-    # Apply environment groups (includes ENABLE_QUERY_LOGGING, ENABLE_DEV_TOOLS, etc.)
+    # Reference existing environment groups
     envVarGroups:
-      - arrakis-shared
-      - arrakis-dev
-      - arrakis-secrets-dev
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-dev
+      - fromGroup: arrakis-secrets-dev
 
   # ===================
   # STAGING ENVIRONMENT
@@ -166,35 +138,35 @@ services:
     buildCommand: "corepack enable && bun install && bun run build"
     startCommand: "bun run start"
     healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 120
+
+    # Auto-scaling configuration
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetCPUPercent: 60
+      targetMemoryPercent: 70
+
     envVars:
-      # Database connection
+      # Database and Redis connections
       - key: DATABASE_URL
         fromDatabase:
           name: arrakis-staging-db
           property: connectionString
-
-      # Redis connection
       - key: REDIS_URL
         fromDatabase:
           name: arrakis-staging-redis
           property: connectionString
 
-      # Public URL for the staging environment
+      # Environment-specific URLs
       - key: NEXT_PUBLIC_APP_URL
         value: https://arrakis-staging.onrender.com
 
-      # AI API Keys - Secrets (to be provided during setup)
-      - key: ANTHROPIC_API_KEY
-        sync: false
-
-      - key: OPENAI_API_KEY
-        sync: false
-
-    # Apply environment groups (includes ENABLE_QUERY_LOGGING, ENABLE_DEV_TOOLS, etc.)
+    # Reference existing environment groups
     envVarGroups:
-      - arrakis-shared
-      - arrakis-staging
-      - arrakis-secrets-dev
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-staging
+      - fromGroup: arrakis-secrets-prod  # Use prod secrets for staging
 
   # ===================
   # PRODUCTION ENVIRONMENT
@@ -210,42 +182,46 @@ services:
     buildCommand: "corepack enable && bun install && bun run build"
     startCommand: "bun run start"
     healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 300
+
+    # Production auto-scaling
+    scaling:
+      minInstances: 2
+      maxInstances: 10
+      targetCPUPercent: 50
+      targetMemoryPercent: 60
+
+    # Custom domains (configure in Render Dashboard)
+    domains:
+      - arrakis.onrender.com
+
     envVars:
-      # Database connection
+      # Database and Redis connections
       - key: DATABASE_URL
         fromDatabase:
           name: arrakis-prod-db
           property: connectionString
-
-      # Redis connection
       - key: REDIS_URL
         fromDatabase:
           name: arrakis-prod-redis
           property: connectionString
 
-      # Public URL for the production environment
+      # Environment-specific URLs
       - key: NEXT_PUBLIC_APP_URL
         value: https://arrakis.onrender.com
 
-      # AI API Keys - Secrets (to be provided during setup)
-      - key: ANTHROPIC_API_KEY
-        sync: false
-
-      - key: OPENAI_API_KEY
-        sync: false
-
-    # Apply environment groups (includes ENABLE_QUERY_LOGGING, ENABLE_DEV_TOOLS, NODE_OPTIONS, etc.)
+    # Reference existing environment groups
     envVarGroups:
-      - arrakis-shared
-      - arrakis-prod
-      - arrakis-secrets-prod
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-prod
+      - fromGroup: arrakis-secrets-prod
 
-# ===================
-# BACKGROUND WORKERS (Optional - for job processing)
-# ===================
+  # ===================
+  # BACKGROUND WORKERS
+  # ===================
 
   # Development Worker
-  - type: pserv  # Private service for background jobs
+  - type: pserv
     name: arrakis-dev-worker
     runtime: node
     plan: starter
@@ -255,31 +231,23 @@ services:
     autoDeploy: true
     buildCommand: "corepack enable && bun install"
     startCommand: "bun run worker:start"
+
     envVars:
-      # Database connection
+      # Database and Redis connections
       - key: DATABASE_URL
         fromDatabase:
           name: arrakis-dev-db
           property: connectionString
-
-      # Redis connection for job queue
       - key: REDIS_URL
         fromDatabase:
           name: arrakis-dev-redis
           property: connectionString
 
-      # AI API Keys
-      - key: ANTHROPIC_API_KEY
-        sync: false
-
-      - key: OPENAI_API_KEY
-        sync: false
-
-    # Apply environment groups
+    # Reference existing environment groups
     envVarGroups:
-      - arrakis-shared
-      - arrakis-dev
-      - arrakis-secrets-dev
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-dev
+      - fromGroup: arrakis-secrets-dev
 
   # Staging Worker
   - type: pserv
@@ -292,33 +260,25 @@ services:
     autoDeploy: true
     buildCommand: "corepack enable && bun install"
     startCommand: "bun run worker:start"
+
     envVars:
-      # Database connection
+      # Database and Redis connections
       - key: DATABASE_URL
         fromDatabase:
           name: arrakis-staging-db
           property: connectionString
-
-      # Redis connection for job queue
       - key: REDIS_URL
         fromDatabase:
           name: arrakis-staging-redis
           property: connectionString
 
-      # AI API Keys
-      - key: ANTHROPIC_API_KEY
-        sync: false
-
-      - key: OPENAI_API_KEY
-        sync: false
-
-    # Apply environment groups
+    # Reference existing environment groups
     envVarGroups:
-      - arrakis-shared
-      - arrakis-staging
-      - arrakis-secrets-dev
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-staging
+      - fromGroup: arrakis-secrets-prod
 
-  # Production Worker
+  # Production Worker with persistent disk
   - type: pserv
     name: arrakis-prod-worker
     runtime: node
@@ -326,31 +286,29 @@ services:
     region: oregon
     repo: https://github.com/happydotemdr/arrakis.git
     branch: master
-    autoDeploy: false  # Manual deployments for production
+    autoDeploy: false
     buildCommand: "corepack enable && bun install"
     startCommand: "bun run worker:start"
+
+    # Persistent disk for worker data
+    disk:
+      name: worker-data
+      mountPath: /app/data
+      sizeGB: 10
+
     envVars:
-      # Database connection
+      # Database and Redis connections
       - key: DATABASE_URL
         fromDatabase:
           name: arrakis-prod-db
           property: connectionString
-
-      # Redis connection for job queue
       - key: REDIS_URL
         fromDatabase:
           name: arrakis-prod-redis
           property: connectionString
 
-      # AI API Keys
-      - key: ANTHROPIC_API_KEY
-        sync: false
-
-      - key: OPENAI_API_KEY
-        sync: false
-
-    # Apply environment groups (includes NODE_OPTIONS via arrakis-prod group)
+    # Reference existing environment groups
     envVarGroups:
-      - arrakis-shared
-      - arrakis-prod
-      - arrakis-secrets-prod
+      - fromGroup: arrakis-shared
+      - fromGroup: arrakis-prod
+      - fromGroup: arrakis-secrets-prod
