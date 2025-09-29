@@ -1,23 +1,6 @@
 # Dependencies
 node_modules/
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-.pnpm-store/
-.yarn/
-.yarnrc.yml
-
-# Build outputs
-dist/
-build/
-out/
-.next/
-.nuxt/
-.output/
-.vercel/
-.netlify/
 
 # Environment variables
 .env
@@ -25,16 +8,10 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
-.env.*.local
 
 # Logs
 logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.pnpm-debug.log*
 
 # Runtime data
 pids
@@ -44,41 +21,13 @@ pids
 
 # Coverage directory used by tools like istanbul
 coverage/
-*.lcov
-.nyc_output/
-
-# Instrumentation and profiling
-.vscode-test
-
-# Test artifacts
-test-results/
-playwright-report/
-test-results.xml
-coverage.xml
-
-# Cache directories
-.cache/
-.parcel-cache/
-.eslintcache
-.stylelintcache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
 
 # Temporary folders
 tmp/
 temp/
-.tmp/
-.temp/
 
 # OS generated files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 Desktop.ini
 
@@ -89,41 +38,9 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
-*~
-.project
-.settings/
-.classpath
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-.turso/
-
-# Drizzle
-drizzle/
-.drizzle/
-
-# TypeScript
-*.tsbuildinfo
-.tscache/
 
 # Optional REPL history
 .node_repl_history
-
-# Lock files (keep package-lock.json but exclude others)
-yarn.lock
-pnpm-lock.yaml
-bun.lockb
-
-# Backup files
-*.bak
-*.backup
-*.old
-
-# Local development
-.local/
-.vite/
 
 # Claude Code local settings (personal overrides)
 .claude/settings.local.json

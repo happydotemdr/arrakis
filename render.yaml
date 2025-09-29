@@ -1,23 +1,9 @@
 # Arrakis Infrastructure Blueprint - Render.com
-# Cost-optimized deployment with minimal resources
-
-# Preview Environments (disabled to save costs)
-# previews:
-#   generation: manual
+# Minimal configuration - Single database + Single web service
 
 # Database Definitions
 databases:
-  # Development Database - Free tier
-  - name: arrakis-dev-db
-    plan: free
-    postgresMajorVersion: "17"
-    databaseName: arrakis_dev
-    user: arrakis_dev_user
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: "Allow all (development only)"
-
-  # Production Database - Smallest paid tier (no high availability)
+  # Production Database - Smallest paid tier
   - name: arrakis-prod-db
     plan: basic-256mb
     postgresMajorVersion: "17"
@@ -29,67 +15,7 @@ databases:
 
 # Service Definitions
 services:
-  # ===================
-  # REDIS KEY-VALUE STORES
-  # ===================
-
-  # Development Redis - Free tier
-  - type: keyvalue
-    name: arrakis-dev-redis
-    plan: free
-    region: oregon
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: "Development access"
-
-  # Production Redis - Starter tier (smallest paid)
-  - type: keyvalue
-    name: arrakis-prod-redis
-    plan: starter
-    region: oregon
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: "Production access"
-
-  # ===================
-  # DEVELOPMENT ENVIRONMENT
-  # ===================
-  - type: web
-    name: arrakis-dev
-    runtime: node
-    plan: free
-    region: oregon
-    repo: https://github.com/happydotemdr/arrakis.git
-    branch: develop
-    autoDeploy: true
-    buildCommand: "corepack enable && bun install && bun run build"
-    startCommand: "bun run start"
-    healthCheckPath: /api/health
-
-    envVars:
-      # Database and Redis connections
-      - key: DATABASE_URL
-        fromDatabase:
-          name: arrakis-dev-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: arrakis-dev-redis
-          type: keyvalue
-          property: connectionString
-
-      # Environment-specific URLs
-      - key: NEXT_PUBLIC_APP_URL
-        value: https://arrakis-dev.onrender.com
-
-      # Reference existing environment groups
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-dev
-      - fromGroup: arrakis-secrets-dev
-
-  # ===================
-  # PRODUCTION ENVIRONMENT
-  # ===================
+  # Production Web Service - Minimal Hello World
   - type: web
     name: arrakis-prod
     runtime: node
@@ -98,61 +24,14 @@ services:
     repo: https://github.com/happydotemdr/arrakis.git
     branch: master
     autoDeploy: false  # Manual deployments for production safety
-    buildCommand: "corepack enable && bun install && bun run build"
-    startCommand: "bun run start"
-    healthCheckPath: /api/health
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    healthCheckPath: /health
 
     envVars:
-      # Database and Redis connections
+      # Database connection
       - key: DATABASE_URL
         fromDatabase:
           name: arrakis-prod-db
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: arrakis-prod-redis
-          type: keyvalue
-          property: connectionString
-
-      # Environment-specific URLs
-      - key: NEXT_PUBLIC_APP_URL
-        value: https://arrakis.onrender.com
-
-      # Reference existing environment groups
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-prod
-      - fromGroup: arrakis-secrets-prod
-
-  # ===================
-  # BACKGROUND WORKERS (Optional - only if needed)
-  # ===================
-
-  # Development Worker - Free tier
-  - type: pserv
-    name: arrakis-dev-worker
-    runtime: node
-    plan: free
-    region: oregon
-    repo: https://github.com/happydotemdr/arrakis.git
-    branch: develop
-    autoDeploy: true
-    buildCommand: "corepack enable && bun install"
-    startCommand: "bun run worker:start"
-
-    envVars:
-      # Database and Redis connections
-      - key: DATABASE_URL
-        fromDatabase:
-          name: arrakis-dev-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: arrakis-dev-redis
-          type: keyvalue
-          property: connectionString
-
-      # Reference existing environment groups
-      - fromGroup: arrakis-shared
-      - fromGroup: arrakis-dev
-      - fromGroup: arrakis-secrets-dev
 

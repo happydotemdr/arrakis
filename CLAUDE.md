@@ -5,213 +5,123 @@ code in this repository.
 
 ## Project Overview
 
-**Arrakis** is a sophisticated, production-ready conversation capture and
-semantic search system for Claude Code sessions. This is a **mature, working
-application** with advanced architecture, not a new project.
+**Arrakis** has been completely reset to a minimal Hello World Express.js server. This is a fresh start from the ground up, having stripped away all previous complex architecture to return to bare bones.
 
-**Current Status**: Phases 1 & 2 complete, Phase 3 semantic search infrastructure implemented, Claude Code integration (System B) fully tested and operational.
+**Current Status**: Minimal Express.js server with PostgreSQL database connectivity - ready for new development.
 
-## Current State - September 27, 2025
+## Current State - September 29, 2025
 
-This is a **fully functional, production-ready application** with:
+This is a **minimal, clean-slate application** with:
 
-### ✅ Working Application Stack
-- **Next.js 15 + React 19** - Modern web application with 54+ components
-- **TypeScript 5.9** - Strict type checking, zero compilation errors
-- **Neon PostgreSQL + pgvector** - Vector database with real data (4 sessions, 10 messages)
-- **Drizzle ORM** - Type-safe database operations with evolved schema
-- **tRPC API layer** - End-to-end type safety
-- **Tailwind CSS + shadcn/ui** - Modern responsive design
-- **Bun runtime** - Fast development and builds
+### ✅ Simple Application Stack
+- **Express.js 4.18** - Minimal web server
+- **Node.js 18+** - JavaScript runtime
+- **PostgreSQL** - Database connection via `pg` driver
+- **Basic middleware** - CORS and JSON parsing
 
-### ✅ Database Architecture (Recently Evolved)
-- **8 production tables** with proper relationships
-- **pgvector extension** active with HNSW indexes
-- **Message embeddings** ready for semantic search
-- **Real conversation data** - 4 active sessions with full metadata
-- **New schema fields** (added Sept 27, 2025):
-  - `sessions.message_count` - Automatic message counting
-  - `sessions.embedding_status` - AI processing status
-  - `messages.embedding_status` - Individual message processing status
+### ✅ Minimal Infrastructure (Render.com)
+- **Single PostgreSQL database** - basic-256mb plan (~$7/month)
+- **Single Node.js web service** - starter plan (~$5/month)
+- **Total cost**: ~$12/month for minimal paid infrastructure
 
-### ✅ Working Features
-- **Conversation capture** - Full Claude API integration
-- **Session management** - Browse, filter, view conversations
-- **Real-time dashboard** - Live monitoring and stats
-- **Search foundation** - Text search with vector architecture ready
-- **Production builds** - Optimized, deployable code
-
-## Recent Major Work (Sept 27, 2025)
-
-**Schema Evolution Recovery**: Successfully resolved post-GitHub database/code
-misalignment:
-- Added missing database columns to match code expectations
-- Fixed 20+ TypeScript compilation errors across 3 core files
-- Synchronized Drizzle schema with live database
-- Verified all builds and functionality working
-
-**Files Recently Modified**:
-- `lib/db/schema.ts` - Added new fields
-- `lib/context/context-retrieval.ts` - Fixed field references + imports
-- `lib/search/semantic-search.ts` - Fixed 20+ field mismatches
-- `lib/vectors/vector-processor.ts` - Updated timestamp handling
+### ✅ Available Endpoints
+- `GET /` - Hello World message with timestamp
+- `GET /health` - Health check endpoint (required by Render)
+- `GET /db-test` - Database connection test
 
 ## Development Commands
 
 ```bash
 # Development
-bun run dev              # Start development server (http://localhost:3000)
-bun run build            # Production build (currently passing)
-bun run type-check       # TypeScript verification (currently clean)
-bun run lint             # Code linting
+npm install              # Install minimal dependencies
+npm start               # Start production server
+npm run dev             # Start development server (same as start)
 
-# Database
-bun run db:generate      # Generate new migrations
-bun run db:migrate       # Run pending migrations
-bun run db:seed          # Seed development data
-bun run db:studio        # Open Drizzle Studio
-
-# Quality checks - run these before any major changes
-npm run check            # Full quality check (lint + format + type)
-npm run format           # Auto-format all files
+# Quality checks - inherited from parent directory
+npm run check           # Full quality check (lint + format + type)
+npm run format          # Auto-format all files
 ```
 
-## Architecture & Code Organization
+## File Structure
 
-### Key Directories
 ```
 arrakis/
-├── app/                 # Next.js App Router (10 pages, 54+ components)
-│   ├── (dashboard)/    # Dashboard layout group
-│   ├── api/           # API endpoints
-│   └── globals.css    # Global styles
-├── components/         # Feature-organized React components
-│   ├── ui/             # shadcn/ui base components
-│   ├── dashboard/      # Dashboard features
-│   ├── sessions/       # Session management
-│   ├── search/         # Search interfaces
-│   └── capture/        # Capture services
-├── lib/                # Core business logic
-│   ├── db/            # Database schema & queries (Drizzle)
-│   ├── api/           # tRPC routers (type-safe APIs)
-│   ├── search/        # Search & vector processing
-│   ├── context/       # Context retrieval system
-│   ├── vectors/       # Vector embeddings processing
-│   └── capture/       # Conversation capture logic
-├── docs/              # Implementation plans & documentation
-└── scripts/           # Database utilities & tools
-```
-
-### Database Schema (Current)
-```sql
--- Core tables with recent schema evolution
-users (id, username, created_at, settings)
-sessions (id, user_id, title, created_at, message_count, embedding_status, metadata)
-messages (id, session_id, role, content, created_at, embedding_status, metadata)
-message_embeddings (id, message_id, embedding, model, created_at)
-conversation_tags (id, name, color, description)
-session_tags (session_id, tag_id)
-conversation_templates (id, name, template, category, user_id)
-session_embeddings (id, session_id, summary_text, embedding, model)
+├── index.js            # Main Express server (Hello World)
+├── package.json        # Minimal dependencies (express, cors, dotenv, pg)
+├── render.yaml         # Minimal Render infrastructure
+├── .env.example        # Database URL template
+├── .env.local          # Local environment variables
+├── .gitignore          # Basic Node.js gitignore
+├── .claude/            # Claude Code configuration (preserved)
+├── .github/            # GitHub workflows (preserved)
+├── .vscode/            # VS Code settings (preserved)
+└── README.md           # Project documentation
 ```
 
 ## Environment Setup
 
 Required environment variables (`.env.local`):
 ```bash
-# Database (Neon PostgreSQL)
-DATABASE_URL="postgresql://..."
+# Database connection string (from Render PostgreSQL service)
+DATABASE_URL="postgresql://username:password@host:port/database?sslmode=require"
 
-# AI Services
-ANTHROPIC_API_KEY="sk-ant-api03-..."      # Claude API integration
-OPENAI_API_KEY="sk-proj-..."              # Text embeddings
-
-# Optional
-REDIS_URL="redis://localhost:6379"        # Job processing
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+# Application configuration
+NODE_ENV="development"
+PORT="3000"
 ```
 
-## Current Phase Status
+## Render Infrastructure
 
-### ✅ Phase 1 Complete (Foundation)
-- Modern web stack setup
-- Database architecture with pgvector
-- Conversation capture system
-- Real Claude API integration
+### Minimal Configuration
+- **Database**: `arrakis-prod-db` (basic-256mb, PostgreSQL 17)
+- **Web Service**: `arrakis-prod` (starter plan, Node.js runtime)
+- **Auto-deploy**: Disabled (manual deployments for safety)
+- **Health check**: `/health` endpoint
+- **Build**: `npm install`
+- **Start**: `npm start`
 
-### ✅ Phase 2 Complete (Web Interface)
-- 54+ React components
-- tRPC API layer
-- Dashboard and session management
-- Production build optimization
+### Removed Components
+- All development environment services
+- Redis/KeyValue stores
+- Background workers
+- Complex environment groups
+- Framework-specific build processes
 
-### 🚀 Phase 3 Ready (Advanced Features)
-**Next major milestone** - Transform into intelligent analysis platform:
-- AI-powered semantic search with vector embeddings
-- Conversation insights and pattern analysis
-- Multi-user collaboration features
-- Public API and third-party integrations
-- Performance monitoring and optimization
+## Fresh Start Guidelines
 
-## Dual-System Architecture - IMPLEMENTED ✅
+### This is a Clean Slate
+- **No legacy code** - All previous complex architecture removed
+- **No dependencies on removed systems** - No tRPC, Drizzle, Next.js, etc.
+- **Minimal dependencies** - Only express, cors, dotenv, pg
+- **Ready for new development** - Build whatever you want from this foundation
 
-**Strategic Goal**: Implement both basic and advanced Claude integration: **ACHIEVED**
+### Development Approach
+- **Start simple** - Add complexity only as needed
+- **Database first** - PostgreSQL connection ready for your schema
+- **Incremental growth** - Add features one at a time
+- **Cost conscious** - Minimal infrastructure, scale up as needed
 
-**System A (Current)**: Basic Claude API integration (`@anthropic-ai/sdk`)
-- Text-based conversations
-- Simple request/response patterns
-- UI-focused interactions
+### Database Usage
+- **Connection ready** - `/db-test` endpoint verifies connectivity
+- **No existing schema** - Clean database, define your own tables
+- **PostgreSQL 17** - Latest version with full feature set
+- **SSL required** - Production security enabled
 
-**System B (IMPLEMENTED)**: Claude Code SDK integration ✅ FULLY OPERATIONAL
-- Full tool access (Read, Write, Edit, Bash, etc.) ✅ TESTED
-- Multi-step reasoning capabilities ✅ VERIFIED
-- File system operations ✅ CONFIRMED
-- Project-aware context ✅ WORKING
-- **Self-modification potential** ✅ DEMONSTRATED
-- Located at `/claude-code` with complete UI and API integration
-- **Real-time session monitoring** and **task execution** verified through testing
+## Next Steps
 
-**Shared Foundation**: Both systems contribute to the same knowledge base,
-creating a unified learning and memory system. ✅ DATABASE INTEGRATION WORKING
-
-## Working Guidelines
-
-### When Making Changes
-1. **Always run type-check first**: `bun run type-check`
-2. **Test builds**: `bun run build`
-3. **Database changes**: Use proper migrations, test with real data
-4. **Schema updates**: Keep Drizzle schema synchronized with database
-5. **Complex changes**: Break into small, testable steps
-
-### Code Quality Standards
-- **TypeScript strict mode** - Zero compilation errors required
-- **Type safety** - Leverage tRPC end-to-end types
-- **Database types** - Use Drizzle inferred types
-- **Component architecture** - Feature-based organization
-- **Error handling** - Graceful degradation with user feedback
-
-### Database Best Practices
-- **Migrations**: Use Drizzle Kit for schema changes
-- **Vector data**: pgvector for semantic search (ready but not fully utilized)
-- **Performance**: HNSW indexes already configured
-- **Real data**: System has 4 sessions with 10 messages for testing
+This minimal foundation is ready for:
+1. **Define your data model** - Create tables and schema
+2. **Add business logic** - Build the features you actually need
+3. **Implement authentication** - If/when users are needed
+4. **Add frontend** - React, vanilla JS, or server-rendered pages
+5. **Scale infrastructure** - Upgrade services as usage grows
 
 ## Important Notes
 
-⚠️ **This is NOT a new project** - It's a sophisticated, working application
-⚠️ **Schema recently evolved** - Database and code are now synchronized
-⚠️ **Production ready** - Clean builds, no TypeScript errors
-⚠️ **Real data exists** - 4 sessions with conversation history
-⚠️ **pgvector active** - Vector search infrastructure ready
+✅ **This IS a new project** - Complete reset, no legacy constraints
+✅ **Clean foundation** - Minimal dependencies, maximum flexibility
+✅ **Cost optimized** - Only essential paid services
+✅ **Database ready** - PostgreSQL connection tested and working
+✅ **Deployment ready** - Render configuration operational
 
-## Next Development Priorities
-
-1. **Phase 3 Implementation** - AI-powered semantic search
-2. **Vector embeddings** - Populate message embeddings for existing data
-3. **Intelligent insights** - Conversation analysis and pattern detection
-4. **Dual-system architecture** - Claude Code SDK integration
-5. **Performance optimization** - Production monitoring and scaling
-
-This application represents significant development investment and sophisticated
-architecture. Treat it as a mature system ready for advanced feature
-development, not a greenfield project.
+Start building whatever you want - this is your clean foundation!
