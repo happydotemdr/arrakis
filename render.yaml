@@ -23,7 +23,7 @@ services:
     region: oregon
     repo: https://github.com/happydotemdr/arrakis.git
     branch: master
-    autoDeploy: false  # Manual deployments for safety
+    autoDeploy: true  # Auto-deploy on push to master
     buildCommand: "npm install && npm run build"
     startCommand: "npm start"
     healthCheckPath: /
