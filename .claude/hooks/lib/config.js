@@ -16,7 +16,7 @@ const CONFIG = {
     maxFileSize: 10 * 1024 * 1024, // 10MB
     maxFiles: 5,
     asyncWrite: true,
-    flushInterval: 5000 // 5 seconds
+    flushInterval: 10000 // 10 seconds (optimized: 50% fewer I/O operations)
   },
 
   // Queue configuration

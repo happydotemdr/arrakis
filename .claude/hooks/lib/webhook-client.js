@@ -16,6 +16,24 @@ const IdGenerator = require('./id-generator');
 class WebhookClient {
   constructor() {
     this.config = CONFIG.webhook;
+
+    // Create persistent HTTP agents with keep-alive for connection reuse
+    // This reduces TCP handshake overhead (~20ms per request after initial)
+    this.httpAgent = new http.Agent({
+      keepAlive: true,
+      keepAliveMsecs: 30000, // 30 seconds
+      maxSockets: 5,
+      maxFreeSockets: 2,
+      timeout: this.config.timeout
+    });
+
+    this.httpsAgent = new https.Agent({
+      keepAlive: true,
+      keepAliveMsecs: 30000,
+      maxSockets: 5,
+      maxFreeSockets: 2,
+      timeout: this.config.timeout
+    });
   }
 
   /**
@@ -140,6 +158,8 @@ class WebhookClient {
 
       const postData = JSON.stringify(payload);
 
+      const isHttps = parsedUrl.protocol === 'https:';
+
       const options = {
         hostname: parsedUrl.hostname,
         port: parsedUrl.port,
@@ -150,8 +170,10 @@ class WebhookClient {
           'Content-Length': Buffer.byteLength(postData),
           'User-Agent': 'Claude-Code-Webhook/1.0',
           'X-Request-ID': requestId,
-          'Authorization': this.config.apiKey ? `Bearer ${this.config.apiKey}` : undefined
+          'Connection': 'keep-alive', // Enable connection reuse
+          ...(this.config.apiKey && { 'Authorization': `Bearer ${this.config.apiKey}` })
         },
+        agent: isHttps ? this.httpsAgent : this.httpAgent, // Use persistent agent
         timeout: this.config.timeout
       };
 

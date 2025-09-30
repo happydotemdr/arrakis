@@ -407,10 +407,11 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Return minimal response - webhook client only checks success status
+    // This reduces JSON serialization time and network transmission
     return NextResponse.json({
       success: true,
-      message: `Processed ${payload.event} event`,
-      data: result,
+      requestId: requestMetadata.requestId,
     })
 
   } catch (error) {
