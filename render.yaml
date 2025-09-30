@@ -10,8 +10,13 @@ databases:
     databaseName: arrakis_production
     user: arrakis_prod_user
     ipAllowList:
+      # Your local machine for Claude Code conversation capture
+      - source: 23.113.176.139/32
+        description: "Local development - Claude Code hooks"
+
+      # Render internal network for web service access
       - source: 0.0.0.0/0
-        description: "Production access"
+        description: "Render web service access (temporary - restrict after testing)"
 
 # Service Definitions
 services:
