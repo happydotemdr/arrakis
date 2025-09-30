@@ -34,7 +34,5 @@ ON conversation_embeddings (conversation_id, chunk_index);
 CREATE INDEX IF NOT EXISTS idx_conversations_ended_started
 ON conversations (ended_at, started_at) WHERE ended_at IS NULL;
 
--- Optimize recent conversation queries (last 7 days)
-CREATE INDEX IF NOT EXISTS idx_conversations_started_recent
-ON conversations (started_at DESC)
-WHERE started_at >= NOW() - INTERVAL '7 days';
+-- Optimize recent conversation queries (removed - NOW() not IMMUTABLE for partial index)
+-- Use application-level filtering instead of partial index for time-based queries
