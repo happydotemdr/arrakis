@@ -4,6 +4,10 @@ import { parseTranscriptFile, generateConversationTitle, extractProjectName } fr
 import type { ParsedConversation } from '@/lib/claude/types'
 
 export const conversationRouter = createTRPCRouter({
+  // =============================================================================
+  // PUBLIC READ OPERATIONS - Used by frontend
+  // =============================================================================
+
   // Get all conversations
   getAll: publicProcedure.query(async ({ ctx }) => {
     const conversations = await ctx.db.conversation.findMany({
@@ -36,6 +40,13 @@ export const conversationRouter = createTRPCRouter({
       return conversation
     }),
 
+  // =============================================================================
+  // DISABLED - General CRUD operations not used by read-only frontend
+  // These are commented out for security as they're not needed for the UI
+  // Uncomment and add authentication if you need write operations in the future
+  // =============================================================================
+
+  /*
   // Create a new conversation
   create: publicProcedure
     .input(
@@ -148,6 +159,11 @@ export const conversationRouter = createTRPCRouter({
       })
       return toolUse
     }),
+  */
+
+  // =============================================================================
+  // WEBHOOK OPERATIONS - Used by Claude Code hooks (keep these active)
+  // =============================================================================
 
   // Create conversation from Claude hook
   createFromHook: publicProcedure

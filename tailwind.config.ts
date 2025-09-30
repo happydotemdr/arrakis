@@ -49,11 +49,23 @@ const config: Config = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        'cyber-black': 'hsl(var(--cyber-black))',
+        'cyber-green': 'hsl(var(--cyber-green))',
+        'cyber-cyan': 'hsl(var(--cyber-cyan))',
+        'cyber-amber': 'hsl(var(--cyber-amber))',
+        'cyber-red': 'hsl(var(--cyber-red))',
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      fontFamily: {
+        mono: ['Courier New', 'monospace'],
+      },
+      boxShadow: {
+        cyber: '0 0 10px rgba(0, 255, 65, 0.2)',
+        'cyber-strong': '0 0 20px rgba(0, 255, 65, 0.4)',
       },
     },
   },
