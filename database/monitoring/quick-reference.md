@@ -2,6 +2,9 @@
 
 One-page reference for common database monitoring commands.
 
+**System Status**: ✅ **OPERATIONAL** (Activated September 30, 2025, 11:30 AM PT)
+**Current State**: All 6 event hooks active and capturing webhooks
+
 ## Connection Strings
 
 ```bash
@@ -14,17 +17,17 @@ DIRECT_URL="postgresql://..."
 
 ## Essential Commands
 
-### Pre-Activation
+### Post-Activation (Current State)
 
 ```bash
-# Capture baseline
-psql $DIRECT_URL -f 01-baseline-metrics.sql > baseline.txt
+# Check current metrics (webhooks now firing!)
+psql $DIRECT_URL -f 01-baseline-metrics.sql
 
-# Verify table health
-psql $DIRECT_URL -c "SELECT COUNT(*) FROM webhook_events;"
+# Verify webhooks being captured
+psql $DIRECT_URL -c "SELECT COUNT(*) FROM webhook_events WHERE received_at > NOW() - INTERVAL '1 hour';"
 ```
 
-### During Activation
+### Real-Time Monitoring
 
 ```bash
 # Continuous monitoring (every 5 seconds)

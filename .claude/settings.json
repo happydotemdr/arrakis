@@ -98,7 +98,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation-v2.js",
             "timeout": 10,
             "env": {
               "CLAUDE_HOOK_EVENT": "SessionStart"
@@ -117,7 +117,7 @@
           },
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation-v2.js",
             "timeout": 10,
             "env": {
               "CLAUDE_HOOK_EVENT": "UserPromptSubmit"
@@ -137,7 +137,7 @@
           },
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation-v2.js",
             "timeout": 10,
             "env": {
               "CLAUDE_HOOK_EVENT": "PreToolUse"
@@ -149,7 +149,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation-v2.js",
             "timeout": 10,
             "env": {
               "CLAUDE_HOOK_EVENT": "PreToolUse"
@@ -169,7 +169,7 @@
           },
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation-v2.js",
             "timeout": 10,
             "env": {
               "CLAUDE_HOOK_EVENT": "PostToolUse"
@@ -181,7 +181,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation-v2.js",
             "timeout": 10,
             "env": {
               "CLAUDE_HOOK_EVENT": "PostToolUse"
@@ -195,7 +195,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation-v2.js",
             "timeout": 10,
             "env": {
               "CLAUDE_HOOK_EVENT": "Stop"
@@ -209,7 +209,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-conversation-v2.js",
             "timeout": 15,
             "env": {
               "CLAUDE_HOOK_EVENT": "SessionEnd"
