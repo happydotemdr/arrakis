@@ -98,7 +98,7 @@ export default async function ConversationDetailPage({
                         {message.role}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground font-mono">
-                        {formatDate(new Date(message.timestamp || message.createdAt))}
+                        {formatDate(new Date(message.timestamp))}
                       </p>
                     </div>
                     <div className="text-xs font-mono text-muted-foreground">

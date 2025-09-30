@@ -7,15 +7,9 @@ import { useState } from 'react'
 import superjson from 'superjson'
 
 import { type AppRouter } from '@/server/api/root'
+import { createQueryClient as createOptimizedQueryClient } from './cache-config'
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 30 * 1000, // 30 seconds
-      },
-    },
-  })
+const createQueryClient = createOptimizedQueryClient
 
 let clientQueryClientSingleton: QueryClient | undefined = undefined
 const getQueryClient = () => {

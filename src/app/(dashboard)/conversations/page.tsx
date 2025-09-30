@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
 
 export default async function ConversationsPage() {
-  const conversations = await api.conversation.getAll()
+  const data = await api.conversation.getAll({ limit: 50 })
+  const conversations = data?.items || []
 
   return (
     <div className="space-y-6">

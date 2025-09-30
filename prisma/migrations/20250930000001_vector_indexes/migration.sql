@@ -1,8 +1,4 @@
--- Enable pgvector extension
-CREATE EXTENSION IF NOT EXISTS vector;
-
 -- Add vector search indexes after tables are created
--- Note: These will be applied after Prisma creates the base schema
 
 -- Create HNSW index for fast approximate nearest neighbor search
 -- This is more efficient than IVFFlat for datasets under 1M vectors

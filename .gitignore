@@ -96,6 +96,7 @@ prisma/migrations/dev/
 
 # Claude Code local settings (personal overrides)
 .claude/settings.local.json
+.claude/settings.json
 
 # Server test files
 server-test.log

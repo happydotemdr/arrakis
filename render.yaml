@@ -33,6 +33,22 @@ services:
     startCommand: "npm start"
     healthCheckPath: /
 
+    # Performance optimizations
+    scaling:
+      minInstances: 1
+      maxInstances: 2
+      targetCPUPercent: 70
+      targetMemoryPercent: 80
+
+    # Static asset caching
+    headers:
+      - path: /_next/static/*
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      - path: /api/*
+        name: Cache-Control
+        value: "public, max-age=300, s-maxage=300"
+
     envVars:
       # Database connection
       - key: DATABASE_URL
@@ -50,6 +66,10 @@ services:
       - key: NODE_ENV
         value: production
 
+      # Node.js optimization flags for better performance on limited resources
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=512 --optimize-for-size"
+
       # NextAuth configuration (for future auth features)
       - key: NEXTAUTH_SECRET
         generateValue: true
@@ -58,6 +78,8 @@ services:
         value: https://arrakis-prod.onrender.com
 
       # Claude Hook API Key for authentication
+      # SECURITY: Set this manually in Render dashboard, not in code
+      # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
       - key: CLAUDE_HOOK_API_KEY
-        value: 7d3e4490f7d8c68f82dd9e93d55fa714a34107e96b654c6373eba45c99aa7b38
+        sync: false  # Must be set manually in Render dashboard
 

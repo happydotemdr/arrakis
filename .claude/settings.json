@@ -41,6 +41,28 @@
     ],
     "deny": []
   },
+   "slashCommands": {
+    "debug": {
+      "prompt": "Switch to debug-focused output style",
+      "description": "Deep technical analysis with detailed reasoning"
+    },
+    "arch": {
+      "prompt": "Switch to architecture-focused output style",
+      "description": "System design and architectural decisions"
+    },
+    "review": {
+      "prompt": "Switch to code-review-focused output style",
+      "description": "Thorough code quality analysis"
+    },
+    "feature": {
+      "prompt": "Switch to feature-development-focused output style",
+      "description": "Building new features efficiently"
+    },
+    "enhanced": {
+      "prompt": "Switch to enhanced-default output style",
+      "description": "Balanced output with good detail"
+    }
+  },
   "commands": {
     "agents": ".claude/commands/agents.md",
     "deploy": ".claude/commands/deploy.md",

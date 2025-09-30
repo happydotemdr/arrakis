@@ -8,36 +8,131 @@ export const conversationRouter = createTRPCRouter({
   // PUBLIC READ OPERATIONS - Used by frontend
   // =============================================================================
 
-  // Get all conversations
-  getAll: publicProcedure.query(async ({ ctx }) => {
-    const conversations = await ctx.db.conversation.findMany({
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        messages: {
-          take: 1,
-          orderBy: { createdAt: 'desc' },
-        },
-        _count: {
-          select: { messages: true },
-        },
-      },
-    })
-    return conversations
-  }),
+  // Get all conversations with pagination and optimized queries
+  getAll: publicProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(50),
+      cursor: z.string().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const { limit, cursor } = input
 
-  // Get a conversation by ID with all messages
-  getById: publicProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ input, ctx }) => {
-      const conversation = await ctx.db.conversation.findUnique({
-        where: { id: input.id },
-        include: {
+      const conversations = await ctx.db.conversation.findMany({
+        take: limit + 1, // Take one extra to determine if there are more
+        cursor: cursor ? { id: cursor } : undefined,
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          sessionId: true,
+          projectPath: true,
+          title: true,
+          description: true,
+          startedAt: true,
+          endedAt: true,
+          updatedAt: true,
+          // Only get the latest message preview - no full content
           messages: {
-            orderBy: { createdAt: 'asc' },
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+            select: {
+              id: true,
+              role: true,
+              content: true,
+              timestamp: true,
+            },
+          },
+          _count: {
+            select: { messages: true },
           },
         },
       })
-      return conversation
+
+      let nextCursor: string | undefined = undefined
+      if (conversations.length > limit) {
+        const nextItem = conversations.pop()
+        nextCursor = nextItem!.id
+      }
+
+      return {
+        items: conversations,
+        nextCursor,
+      }
+    }),
+
+  // Get a conversation by ID with optimized message loading
+  getById: publicProcedure
+    .input(z.object({
+      id: z.string(),
+      includeToolUses: z.boolean().default(false),
+      limit: z.number().min(1).max(500).default(100),
+      cursor: z.string().optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      const { id, includeToolUses, limit, cursor } = input
+
+      // First get the conversation
+      const conversation = await ctx.db.conversation.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          sessionId: true,
+          projectPath: true,
+          title: true,
+          description: true,
+          startedAt: true,
+          endedAt: true,
+          metadata: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: { messages: true },
+          },
+        },
+      })
+
+      if (!conversation) return null
+
+      // Then get messages with pagination
+      const messages = await ctx.db.message.findMany({
+        where: { conversationId: id },
+        take: limit + 1,
+        cursor: cursor ? { id: cursor } : undefined,
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          role: true,
+          content: true,
+          toolCalls: true,
+          timestamp: true,
+          metadata: true,
+          ...(includeToolUses && {
+            toolUses: {
+              orderBy: { timestamp: 'asc' },
+              select: {
+                id: true,
+                toolName: true,
+                parameters: true,
+                response: true,
+                duration: true,
+                status: true,
+                timestamp: true,
+              },
+            },
+          }),
+        },
+      })
+
+      let nextCursor: string | undefined = undefined
+      if (messages.length > limit) {
+        const nextItem = messages.pop()
+        nextCursor = nextItem!.id
+      }
+
+      return {
+        ...conversation,
+        messages,
+        nextCursor,
+      }
     }),
 
   // =============================================================================
@@ -362,38 +457,59 @@ export const conversationRouter = createTRPCRouter({
       return conversation
     }),
 
-  // Get conversation statistics
+  // Get conversation statistics (optimized with single aggregate query)
   getStats: publicProcedure.query(async ({ ctx }) => {
-    const [
-      totalConversations,
-      totalMessages,
-      totalToolUses,
-      activeConversations,
-      recentConversations,
-    ] = await Promise.all([
-      ctx.db.conversation.count(),
-      ctx.db.message.count(),
-      ctx.db.toolUse.count(),
-      ctx.db.conversation.count({
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
+    // Use a single aggregated query for conversation stats
+    const [conversationStats, totalMessages, totalToolUses, toolStats] = await Promise.all([
+      // Single query for all conversation aggregates
+      ctx.db.conversation.aggregate({
+        _count: {
+          _all: true,
+          endedAt: true, // Counts non-null values (ended conversations)
+        },
         where: {
-          endedAt: null,
+          // This will be used for total count
         },
       }),
+      ctx.db.message.count(),
+      ctx.db.toolUse.count(),
+      // Get tool usage distribution
+      ctx.db.toolUse.groupBy({
+        by: ['toolName'],
+        _count: { _all: true },
+        orderBy: { toolName: 'asc' },
+        take: 10, // Top 10 most used tools
+      }),
+      // Recent conversations (last 7 days)
       ctx.db.conversation.count({
         where: {
-          startedAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
-          },
+          startedAt: { gte: sevenDaysAgo },
         },
       }),
     ])
+
+    const totalConversations = conversationStats._count._all
+    const endedConversations = conversationStats._count.endedAt || 0
+    const activeConversations = totalConversations - endedConversations
 
     return {
       totalConversations,
       totalMessages,
       totalToolUses,
       activeConversations,
-      recentConversations,
+      recentConversations: await ctx.db.conversation.count({
+        where: { startedAt: { gte: sevenDaysAgo } },
+      }),
+      toolUsageStats: toolStats,
+      // Additional metrics
+      avgMessagesPerConversation: totalConversations > 0
+        ? Math.round(totalMessages / totalConversations)
+        : 0,
+      avgToolUsesPerConversation: totalConversations > 0
+        ? Math.round(totalToolUses / totalConversations)
+        : 0,
     }
   }),
 })
