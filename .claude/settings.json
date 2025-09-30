@@ -78,8 +78,8 @@
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
     "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
     "CLAUDE_HOOK_API_URL": "https://arrakis-prod.onrender.com/api/claude-hooks",
-    "CLAUDE_HOOK_API_KEY": "7d3e4490f7d8c68f82dd9e93d55fa714a34107e96b654c6373eba45c99aa7b38",
-    "CLAUDE_HOOK_DEBUG": "false",
+    "CLAUDE_HOOK_API_KEY": "d9997bce251f45d313ce1fc86565ed9f4bc68bbb45a34691fbed8d91e3d59776",
+    "CLAUDE_HOOK_DEBUG": "true",
     "CLAUDE_HOOK_ENABLED": "true",
     "CLAUDE_HOOK_SESSION_START": "true",
     "CLAUDE_HOOK_USER_PROMPT": "true",
@@ -112,7 +112,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/inject_context.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/inject_context.py",
             "timeout": 10
           },
           {
@@ -132,7 +132,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/security_check.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/security_check.py",
             "timeout": 15
           },
           {
@@ -164,7 +164,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format_files.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format_files.py",
             "timeout": 60
           },
           {

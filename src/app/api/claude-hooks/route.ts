@@ -1,11 +1,18 @@
 /**
  * Claude Code hooks API endpoint
  * Receives and processes hook events from Claude Code
+ *
+ * Features:
+ * - Complete request/response logging via WebhookEvent model
+ * - Idempotency support (prevents duplicate processing)
+ * - Request tracing and performance metrics
+ * - Comprehensive error tracking and audit trail
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { WebhookStatus } from '@prisma/client'
 import {
   parseTranscriptFile,
   generateConversationTitle,
@@ -55,58 +62,377 @@ const hookPayloadSchema = z.object({
   messageCount: z.number().min(0).max(100000).optional(),
   toolUseCount: z.number().min(0).max(100000).optional(),
   userInfo: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  _trace: z.object({
+    requestId: z.string().optional(),
+    spanId: z.string().optional(),
+    traceId: z.string().optional(),
+  }).optional(),
 })
 
 // API Key authentication
 const CLAUDE_HOOK_API_KEY = process.env.CLAUDE_HOOK_API_KEY
 
+/**
+ * Request metadata for webhook event tracking
+ */
+interface RequestMetadata {
+  requestId: string
+  ipAddress: string | null
+  userAgent: string | null
+  headers: Record<string, string>
+}
+
+/**
+ * Result of processing a webhook event
+ */
+interface ProcessingResult {
+  conversationId?: string
+  messageId?: string
+  toolUseId?: string
+  created?: boolean
+  skipped?: boolean
+  error?: string
+}
+
+/**
+ * Extract request metadata for logging
+ */
+function extractRequestMetadata(request: NextRequest): RequestMetadata {
+  // Try to get request ID from various sources (client-provided, trace header, or generate)
+  const requestId =
+    request.headers.get('x-request-id') ||
+    request.headers.get('x-trace-id') ||
+    `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+  // Get client IP address (considering proxies)
+  const ipAddress =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    request.headers.get('cf-connecting-ip') || // Cloudflare
+    null
+
+  const userAgent = request.headers.get('user-agent')
+
+  // Capture relevant headers (redact sensitive data)
+  const headers: Record<string, string> = {
+    'content-type': request.headers.get('content-type') || '',
+    'user-agent': userAgent || '',
+    'x-request-id': requestId,
+  }
+
+  // Log authorization header existence but not the actual key
+  const authHeader = request.headers.get('authorization')
+  if (authHeader) {
+    headers['authorization'] = authHeader.startsWith('Bearer ')
+      ? 'Bearer [REDACTED]'
+      : '[REDACTED]'
+  }
+
+  return { requestId, ipAddress, userAgent, headers }
+}
+
+/**
+ * Create initial webhook event record
+ */
+async function createWebhookEvent(
+  metadata: RequestMetadata,
+  body: unknown,
+  eventType?: string,
+  sessionId?: string
+): Promise<{ id: string }> {
+  const webhookEvent = await db.webhookEvent.create({
+    data: {
+      requestId: metadata.requestId,
+      eventType: eventType || 'UNKNOWN',
+      sessionId: sessionId || null,
+      receivedAt: new Date(),
+      requestBody: body as any,
+      requestHeaders: metadata.headers,
+      ipAddress: metadata.ipAddress,
+      status: WebhookStatus.PENDING,
+      metadata: {
+        userAgent: metadata.userAgent,
+      },
+    },
+    select: { id: true },
+  })
+
+  return webhookEvent
+}
+
+/**
+ * Update webhook event with processing results
+ */
+async function updateWebhookEvent(
+  webhookEventId: string,
+  updates: {
+    status?: WebhookStatus
+    processedAt?: Date
+    processingTime?: number
+    conversationId?: string
+    messageId?: string
+    toolUseId?: string
+    errorMessage?: string
+    errorStack?: string
+    errorCode?: string
+    metadata?: Record<string, any>
+  }
+): Promise<void> {
+  await db.webhookEvent.update({
+    where: { id: webhookEventId },
+    data: updates,
+  })
+}
+
+/**
+ * Check for duplicate requests using requestId
+ * Returns existing webhook event if found and successfully processed
+ */
+async function checkDuplicateRequest(
+  requestId: string
+): Promise<{ id: string; conversationId?: string | null; messageId?: string | null; toolUseId?: string | null } | null> {
+  // Look for existing webhook event with same requestId
+  const existing = await db.webhookEvent.findUnique({
+    where: { requestId },
+    select: {
+      id: true,
+      status: true,
+      conversationId: true,
+      messageId: true,
+      toolUseId: true,
+    },
+  })
+
+  if (!existing) {
+    return null
+  }
+
+  // If already processing or successfully processed, treat as duplicate
+  if (existing.status === WebhookStatus.PROCESSING || existing.status === WebhookStatus.SUCCESS) {
+    return existing
+  }
+
+  // If previously failed or invalid, allow retry
+  return null
+}
+
+/**
+ * Check for duplicate SessionStart by sessionId
+ * Prevents creating multiple conversations for the same session
+ */
+async function checkDuplicateSession(
+  sessionId: string
+): Promise<{ conversationId: string } | null> {
+  const existingConversation = await db.conversation.findFirst({
+    where: { sessionId },
+    select: { id: true },
+  })
+
+  return existingConversation ? { conversationId: existingConversation.id } : null
+}
+
+/**
+ * Main POST handler with complete webhook event logging
+ */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  let webhookEventId: string | undefined
+  let requestMetadata: RequestMetadata | undefined
+
   try {
-    // Verify API key for production
-    if (process.env.NODE_ENV === 'production') {
-      const authHeader = request.headers.get('authorization')
-      const providedKey = authHeader?.replace('Bearer ', '')
+    // Step 1: Extract request metadata
+    requestMetadata = extractRequestMetadata(request)
 
-      if (!CLAUDE_HOOK_API_KEY) {
-        console.error('[Claude Hook] CLAUDE_HOOK_API_KEY not configured')
-        return NextResponse.json(
-          { success: false, error: 'Server misconfigured' },
-          { status: 500 }
-        )
-      }
+    // Step 2: Verify API key (enforced in ALL environments)
+    const authHeader = request.headers.get('authorization')
+    const providedKey = authHeader?.replace('Bearer ', '')
 
-      if (providedKey !== CLAUDE_HOOK_API_KEY) {
-        console.warn('[Claude Hook] Unauthorized request attempt')
-        return NextResponse.json(
-          { success: false, error: 'Unauthorized' },
-          { status: 401 }
-        )
-      }
+    if (!CLAUDE_HOOK_API_KEY) {
+      console.error('[Claude Hook] CLAUDE_HOOK_API_KEY not configured')
+      return NextResponse.json(
+        { success: false, error: 'Server misconfigured' },
+        { status: 500 }
+      )
     }
 
-    // Parse and validate the request body
-    const body = await request.json()
-    const payload = hookPayloadSchema.parse(body) as AnyClaudeHookPayload
+    if (providedKey !== CLAUDE_HOOK_API_KEY) {
+      console.warn('[Claude Hook] Unauthorized request attempt', {
+        requestId: requestMetadata.requestId,
+        ipAddress: requestMetadata.ipAddress,
+      })
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Step 3: Parse request body (before validation to log even malformed requests)
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      // Log malformed JSON requests
+      const webhookEvent = await createWebhookEvent(
+        requestMetadata,
+        { error: 'Malformed JSON' },
+        'PARSE_ERROR',
+        undefined
+      )
+
+      await updateWebhookEvent(webhookEvent.id, {
+        status: WebhookStatus.INVALID,
+        processedAt: new Date(),
+        processingTime: Date.now() - startTime,
+        errorMessage: parseError instanceof Error ? parseError.message : 'Failed to parse JSON',
+        errorCode: 'JSON_PARSE_ERROR',
+      })
+
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON payload' },
+        { status: 400 }
+      )
+    }
+
+    // Step 4: Extract trace requestId if provided by client
+    const traceRequestId = (body as any)?._trace?.requestId
+    if (traceRequestId) {
+      requestMetadata.requestId = traceRequestId
+    }
+
+    // Step 5: Check for duplicate request BEFORE validation (faster)
+    const duplicate = await checkDuplicateRequest(requestMetadata.requestId)
+    if (duplicate) {
+      console.log('[Claude Hook] Duplicate request detected', {
+        requestId: requestMetadata.requestId,
+        originalWebhookEventId: duplicate.id,
+      })
+
+      // Update the duplicate webhook event
+      await updateWebhookEvent(duplicate.id, {
+        status: WebhookStatus.DUPLICATE,
+        processedAt: new Date(),
+        processingTime: Date.now() - startTime,
+        metadata: {
+          duplicateAttemptAt: new Date().toISOString(),
+        },
+      })
+
+      // Return success with cached result
+      return NextResponse.json({
+        success: true,
+        message: 'Request already processed (idempotent)',
+        data: {
+          conversationId: duplicate.conversationId,
+          messageId: duplicate.messageId,
+          toolUseId: duplicate.toolUseId,
+          cached: true,
+        },
+      })
+    }
+
+    // Step 6: Validate payload with Zod
+    let payload: AnyClaudeHookPayload
+    try {
+      payload = hookPayloadSchema.parse(body) as AnyClaudeHookPayload
+    } catch (validationError) {
+      // Create webhook event for invalid payload
+      const webhookEvent = await createWebhookEvent(
+        requestMetadata,
+        body,
+        (body as any)?.event || 'UNKNOWN',
+        (body as any)?.sessionId
+      )
+      webhookEventId = webhookEvent.id
+
+      // Extract Zod validation errors
+      const zodErrors = validationError instanceof z.ZodError
+        ? validationError.errors
+        : undefined
+
+      await updateWebhookEvent(webhookEventId, {
+        status: WebhookStatus.INVALID,
+        processedAt: new Date(),
+        processingTime: Date.now() - startTime,
+        errorMessage: validationError instanceof Error ? validationError.message : 'Validation failed',
+        errorCode: 'VALIDATION_ERROR',
+        metadata: { zodErrors },
+      })
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid payload',
+          details: process.env.NODE_ENV === 'production' ? undefined : zodErrors,
+        },
+        { status: 400 }
+      )
+    }
+
+    // Step 7: Create webhook event record (PENDING)
+    const webhookEvent = await createWebhookEvent(
+      requestMetadata,
+      body,
+      payload.event,
+      payload.sessionId
+    )
+    webhookEventId = webhookEvent.id
 
     console.log(`[Claude Hook] ${payload.event}:`, {
+      webhookEventId,
+      requestId: requestMetadata.requestId,
       sessionId: payload.sessionId,
       timestamp: payload.timestamp,
       projectPath: payload.projectPath,
     })
 
-    // Process the hook event
-    const result = await processHookEvent(payload)
+    // Step 8: Update status to PROCESSING
+    await updateWebhookEvent(webhookEventId, {
+      status: WebhookStatus.PROCESSING,
+    })
+
+    // Step 9: Process the hook event
+    const result = await processHookEvent(payload, webhookEventId)
+
+    // Step 10: Update webhook event with SUCCESS and outcomes
+    await updateWebhookEvent(webhookEventId, {
+      status: WebhookStatus.SUCCESS,
+      processedAt: new Date(),
+      processingTime: Date.now() - startTime,
+      conversationId: result.conversationId,
+      messageId: result.messageId,
+      toolUseId: result.toolUseId,
+      metadata: {
+        created: result.created,
+        skipped: result.skipped,
+      },
+    })
 
     return NextResponse.json({
       success: true,
       message: `Processed ${payload.event} event`,
       data: result,
     })
+
   } catch (error) {
     console.error('[Claude Hook] Error processing hook:', error)
 
+    // Update webhook event with error details
+    if (webhookEventId) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const errorStack = error instanceof Error ? error.stack : undefined
+      const errorCode = (error as any)?.code || 'UNKNOWN_ERROR'
+
+      await updateWebhookEvent(webhookEventId, {
+        status: WebhookStatus.ERROR,
+        processedAt: new Date(),
+        processingTime: Date.now() - startTime,
+        errorMessage,
+        errorStack,
+        errorCode,
+      })
+    }
+
     // Return error response but don't break Claude Code's workflow
-    // In production, don't leak error details
     const errorMessage = process.env.NODE_ENV === 'production'
       ? 'Internal server error'
       : error instanceof Error
@@ -117,6 +443,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: errorMessage,
+        requestId: requestMetadata?.requestId,
       },
       { status: 500 }
     )
@@ -125,11 +452,15 @@ export async function POST(request: NextRequest) {
 
 /**
  * Process different types of hook events
+ * This function is called after webhook event is created and validated
  */
-async function processHookEvent(payload: AnyClaudeHookPayload): Promise<any> {
+async function processHookEvent(
+  payload: AnyClaudeHookPayload,
+  webhookEventId: string
+): Promise<ProcessingResult> {
   switch (payload.event) {
     case 'SessionStart':
-      return await handleSessionStart(payload as SessionStartPayload)
+      return await handleSessionStart(payload as SessionStartPayload, webhookEventId)
 
     case 'UserPromptSubmit':
       return await handleUserPromptSubmit(payload as UserPromptSubmitPayload)
@@ -142,35 +473,48 @@ async function processHookEvent(payload: AnyClaudeHookPayload): Promise<any> {
 
     case 'PreToolUse':
     case 'Stop':
-      // These events are logged but don't require special processing
-      console.log(`[Claude Hook] ${payload.event} event received`)
-      return { logged: true }
+      // These events are logged via webhook event but don't require special processing
+      console.log(`[Claude Hook] ${payload.event} event received and logged`)
+      return { skipped: false }
 
     default:
       console.warn('[Claude Hook] Unknown event type:', (payload as any).event)
-      return { ignored: true }
+      return { skipped: true }
   }
 }
 
 /**
- * Handle session start - create conversation record
+ * Handle session start - create conversation record with idempotency
  */
-async function handleSessionStart(payload: SessionStartPayload) {
+async function handleSessionStart(
+  payload: SessionStartPayload,
+  webhookEventId: string
+): Promise<ProcessingResult> {
   if (!payload.sessionId) {
     throw new Error('SessionStart event missing sessionId')
   }
 
   try {
-    // Check if conversation already exists
-    const existingConversation = await db.conversation.findFirst({
-      where: { sessionId: payload.sessionId },
-    })
-
-    if (existingConversation) {
+    // Check for duplicate session (idempotency for SessionStart)
+    const existingSession = await checkDuplicateSession(payload.sessionId)
+    if (existingSession) {
       console.log(
-        `[Claude Hook] Conversation already exists for session: ${payload.sessionId}`
+        `[Claude Hook] Conversation already exists for session: ${payload.sessionId}`,
+        { conversationId: existingSession.conversationId }
       )
-      return { conversationId: existingConversation.id, created: false }
+
+      // Update webhook event to indicate this was a duplicate session
+      await updateWebhookEvent(webhookEventId, {
+        conversationId: existingSession.conversationId,
+        metadata: {
+          duplicateSession: true,
+        },
+      })
+
+      return {
+        conversationId: existingSession.conversationId,
+        created: false,
+      }
     }
 
     // Create new conversation
@@ -202,7 +546,9 @@ async function handleSessionStart(payload: SessionStartPayload) {
 /**
  * Handle user prompt submit - add user message
  */
-async function handleUserPromptSubmit(payload: UserPromptSubmitPayload) {
+async function handleUserPromptSubmit(
+  payload: UserPromptSubmitPayload
+): Promise<ProcessingResult> {
   if (!payload.sessionId || !payload.prompt) {
     console.warn('[Claude Hook] UserPromptSubmit missing required fields')
     return { skipped: true }
@@ -212,6 +558,10 @@ async function handleUserPromptSubmit(payload: UserPromptSubmitPayload) {
     // Find conversation
     const conversation = await db.conversation.findFirst({
       where: { sessionId: payload.sessionId },
+      select: {
+        id: true,
+        title: true,
+      },
     })
 
     if (!conversation) {
@@ -252,7 +602,10 @@ async function handleUserPromptSubmit(payload: UserPromptSubmitPayload) {
       })
     }
 
-    return { messageId: message.id }
+    return {
+      conversationId: conversation.id,
+      messageId: message.id,
+    }
   } catch (error) {
     console.error('[Claude Hook] Error adding user message:', error)
     throw error
@@ -262,7 +615,9 @@ async function handleUserPromptSubmit(payload: UserPromptSubmitPayload) {
 /**
  * Handle post tool use - record tool usage
  */
-async function handlePostToolUse(payload: PostToolUsePayload) {
+async function handlePostToolUse(
+  payload: PostToolUsePayload
+): Promise<ProcessingResult> {
   if (!payload.sessionId || !payload.toolName) {
     console.warn('[Claude Hook] PostToolUse missing required fields')
     return { skipped: true }
@@ -272,6 +627,7 @@ async function handlePostToolUse(payload: PostToolUsePayload) {
     // Find conversation
     const conversation = await db.conversation.findFirst({
       where: { sessionId: payload.sessionId },
+      select: { id: true },
     })
 
     if (!conversation) {
@@ -316,7 +672,11 @@ async function handlePostToolUse(payload: PostToolUsePayload) {
       },
     })
 
-    return { toolUseId: toolUse.id }
+    return {
+      conversationId: conversation.id,
+      messageId: recentMessage.id,
+      toolUseId: toolUse.id,
+    }
   } catch (error) {
     console.error('[Claude Hook] Error recording tool use:', error)
     throw error
@@ -326,7 +686,9 @@ async function handlePostToolUse(payload: PostToolUsePayload) {
 /**
  * Handle session end - parse full transcript and update conversation
  */
-async function handleSessionEnd(payload: SessionEndPayload) {
+async function handleSessionEnd(
+  payload: SessionEndPayload
+): Promise<ProcessingResult> {
   if (!payload.sessionId) {
     console.warn('[Claude Hook] SessionEnd missing sessionId')
     return { skipped: true }
@@ -382,9 +744,6 @@ async function handleSessionEnd(payload: SessionEndPayload) {
 
     return {
       conversationId: conversation.id,
-      transcriptParsed: !!transcriptData,
-      messageCount: transcriptData?.messages.length || 0,
-      toolUseCount: transcriptData?.toolUses.length || 0,
     }
   } catch (error) {
     console.error('[Claude Hook] Error handling session end:', error)

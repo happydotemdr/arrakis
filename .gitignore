@@ -98,5 +98,13 @@ prisma/migrations/dev/
 .claude/settings.local.json
 .claude/settings.json
 
+# Claude Code webhook system (logs and queue contain sensitive data)
+.claude/logs/
+.claude/queue/
+
 # Server test files
 server-test.log
+
+# Temporary migration files
+webhook_migration.sql
+temp_webhook_migration.sql

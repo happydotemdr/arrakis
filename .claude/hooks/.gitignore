@@ -1,0 +1,11 @@
+# Logs (ephemeral, don't commit)
+../logs/*.log
+../logs/*.log.*
+
+# Queue files (contain webhook data, may have sensitive info)
+../queue/pending/*.json
+../queue/processing/*.json
+../queue/failed/*.json
+
+# Debug files
+*.log

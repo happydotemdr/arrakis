@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
@@ -10,103 +7,164 @@ datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
   directUrl  = env("DIRECT_URL")
-  extensions = [pgvector(map: "vector")]
+  extensions = [vector]
 }
 
-// Main conversation entity
 model Conversation {
-  id          String    @id @default(cuid())
-  sessionId   String?   @map("session_id") // Claude Code session identifier
-  projectPath String?   @map("project_path") // File system path to project
-  title       String?   // Auto-generated or user-provided title
-  description String?   // Brief description of conversation
-  startedAt   DateTime  @default(now()) @map("started_at")
-  endedAt     DateTime? @map("ended_at")
-  metadata    Json?     // Additional conversation metadata
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  messages              Message[]
+  id                     String                  @id @default(cuid())
+  sessionId              String?                 @map("session_id")
+  projectPath            String?                 @map("project_path")
+  title                  String?
+  description            String?
+  startedAt              DateTime                @default(now()) @map("started_at")
+  endedAt                DateTime?               @map("ended_at")
+  metadata               Json?
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
   conversationEmbeddings ConversationEmbedding[]
+  messages               Message[]
 
-  // Indexes for performance
   @@index([sessionId])
   @@index([projectPath])
   @@index([startedAt])
   @@index([endedAt])
+  @@index([metadata], map: "idx_conversations_metadata_gin", type: Gin)
+  @@index([sessionId, startedAt(sort: Desc)], map: "idx_conversations_session_started")
+  @@index([updatedAt(sort: Desc)], map: "idx_conversations_updated_at_desc")
   @@map("conversations")
 }
 
-// Message entity with enhanced tracking
 model Message {
-  id             String   @id @default(cuid())
-  conversationId String   @map("conversation_id")
+  id             String       @id @default(cuid())
+  conversationId String       @map("conversation_id")
   role           Role
-  content        String   @db.Text
-  toolCalls      Json?    @map("tool_calls") // Array of tool invocations
-  timestamp      DateTime @default(now())
-  metadata       Json?    // Additional message metadata
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  content        String
+  toolCalls      Json?        @map("tool_calls")
+  timestamp      DateTime     @default(now())
+  metadata       Json?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  toolUses       ToolUse[]
 
-  // Relations
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  toolUses     ToolUse[]
-
-  // Indexes
   @@index([conversationId])
   @@index([role])
   @@index([timestamp])
+  @@index([conversationId, createdAt], map: "idx_messages_conversation_created")
+  @@index([conversationId, createdAt(sort: Desc)], map: "idx_messages_conversation_created_desc")
+  @@index([conversationId, timestamp(sort: Desc)], map: "idx_messages_conversation_timestamp")
+  @@index([metadata], map: "idx_messages_metadata_gin", type: Gin)
+  @@index([toolCalls], map: "idx_messages_tool_calls_gin", type: Gin)
   @@map("messages")
 }
 
-// Tool usage tracking
 model ToolUse {
   id         String   @id @default(cuid())
   messageId  String   @map("message_id")
   toolName   String   @map("tool_name")
-  parameters Json?    // Tool parameters as JSON
-  response   Json?    // Tool response/result as JSON
-  duration   Int?     // Execution duration in milliseconds
-  status     String?  // success, error, timeout, etc.
+  parameters Json?
+  response   Json?
+  duration   Int?
+  status     String?
   timestamp  DateTime @default(now())
-  metadata   Json?    // Additional tool use metadata
+  metadata   Json?
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
-  // Relations
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
-
-  // Indexes
   @@index([messageId])
   @@index([toolName])
   @@index([timestamp])
   @@index([status])
+  @@index([messageId, timestamp(sort: Desc)], map: "idx_tool_uses_message_timestamp")
+  @@index([toolName, status, timestamp(sort: Desc)], map: "idx_tool_uses_name_status")
+  @@index([toolName, timestamp(sort: Desc)], map: "idx_tool_uses_name_timestamp")
+  @@index([parameters], map: "idx_tool_uses_parameters_gin", type: Gin)
+  @@index([response], map: "idx_tool_uses_response_gin", type: Gin)
   @@map("tool_uses")
 }
 
-// Conversation embeddings for semantic search
 model ConversationEmbedding {
-  id             String                  @id @default(cuid())
-  conversationId String                  @map("conversation_id")
-  chunkText      String                  @db.Text @map("chunk_text")
-  chunkIndex     Int                     @map("chunk_index")
-  embedding      Unsupported("vector(1536)")? // OpenAI text-embedding-3-small dimension
-  metadata       Json?                   // Chunk metadata (tokens, model, etc.)
-  createdAt      DateTime                @default(now()) @map("created_at")
-  updatedAt      DateTime                @updatedAt @map("updated_at")
+  id             String                 @id @default(cuid())
+  conversationId String                 @map("conversation_id")
+  chunkText      String                 @map("chunk_text")
+  chunkIndex     Int                    @map("chunk_index")
+  embedding      Unsupported("vector")?
+  metadata       Json?
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  conversation   Conversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  // Relations
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  // Indexes
   @@index([conversationId])
   @@index([chunkIndex])
+  @@index([conversationId, chunkIndex], map: "idx_embeddings_conversation_chunk")
   @@map("conversation_embeddings")
 }
 
-// Role enum for messages
+// Webhook event tracking for debugging and observability
+model WebhookEvent {
+  id             String        @id @default(cuid())
+  requestId      String?       @unique @map("request_id") // For idempotency and tracing
+  eventType      String        @map("event_type") // SessionStart, UserPromptSubmit, etc.
+  sessionId      String?       @map("session_id") // Links to conversation
+
+  // Request details
+  receivedAt     DateTime      @default(now()) @map("received_at")
+  requestBody    Json          @map("request_body") // Full webhook payload (JSONB)
+  requestHeaders Json?         @map("request_headers") // Selected headers for debugging
+  ipAddress      String?       @map("ip_address") // For security audit
+
+  // Processing results
+  status         WebhookStatus @default(PENDING)
+  processedAt    DateTime?     @map("processed_at")
+  processingTime Int?          @map("processing_time") // Milliseconds
+
+  // Outcomes
+  conversationId String?       @map("conversation_id") // Created/updated conversation
+  messageId      String?       @map("message_id") // Created message (if applicable)
+  toolUseId      String?       @map("tool_use_id") // Created tool use (if applicable)
+
+  // Error tracking
+  errorMessage   String?       @map("error_message")
+  errorStack     String?       @map("error_stack")
+  errorCode      String?       @map("error_code") // Categorized error type
+
+  // Retry management
+  retryCount     Int           @default(0) @map("retry_count")
+  retryAfter     DateTime?     @map("retry_after") // For scheduled retries
+
+  // Metadata
+  metadata       Json?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  // Performance indexes
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([status])
+  @@index([receivedAt])
+  @@index([conversationId])
+
+  // Composite indexes for common queries
+  @@index([eventType, status])
+  @@index([sessionId, receivedAt])
+  @@index([status, receivedAt])
+
+  @@map("webhook_events")
+}
+
+// Enum for webhook processing status
+enum WebhookStatus {
+  PENDING        // Just received, not processed yet
+  PROCESSING     // Currently being processed
+  SUCCESS        // Successfully processed
+  FAILED         // Failed after retries
+  ERROR          // Unexpected error
+  DUPLICATE      // Duplicate request detected
+  INVALID        // Invalid payload
+  PENDING_RETRY  // Waiting for retry
+}
+
 enum Role {
   user
   assistant
